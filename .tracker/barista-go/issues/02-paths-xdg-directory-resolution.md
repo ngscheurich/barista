@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/paths` resolves config, flavors, and data dirs per the spec's directory table
-- [ ] First-existing-directory selection; non-existent XDG path falls back; unset env reads as empty string
-- [ ] `filepath.Join`-based path building (no string concatenation with `"/"`)
-- [ ] Data-dir "ensure exists" helper uses `os.MkdirAll`
-- [ ] Unit tests with `t.TempDir()` + `t.Setenv` cover primary, fallback, non-existent, and creation cases
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/paths` resolves config, flavors, and data dirs per the spec's directory table
+- [x] First-existing-directory selection; non-existent XDG path falls back; unset env reads as empty string
+- [x] `filepath.Join`-based path building (no string concatenation with `"/"`)
+- [x] Data-dir "ensure exists" helper uses `os.MkdirAll`
+- [x] Unit tests with `t.TempDir()` + `t.Setenv` cover primary, fallback, non-existent, and creation cases
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass
