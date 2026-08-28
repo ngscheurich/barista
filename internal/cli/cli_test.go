@@ -21,6 +21,7 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	want := "☕ Served up Catppuccin Mocha to:\n\n" +
+		"  ☑ fzf\n" +
 		"  ☑ Ghostty\n" +
 		"  ☑ Neovim\n" +
 		"  ☑ Zellij\n\n"
@@ -37,6 +38,10 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	gotZellij, err := os.ReadFile(filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
 	require.NoError(t, err)
 	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
+
+	gotFzf, err := os.ReadFile(filepath.Join(configDir, "barista", "fzfrc"))
+	require.NoError(t, err)
+	assert.Equal(t, "# Catppuccin Mocha\n", string(gotFzf))
 }
 
 // apply prints the flavor's Name, not the dirname.
@@ -56,7 +61,7 @@ func TestApplyUsesNameNotDirname(t *testing.T) {
 // the run exits zero. The served-up list always names every configured app.
 func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	// Write the flavor with only the Ghostty template; Fish, Neovim, and
+	// Write the flavor with only the Ghostty template; fzf, Neovim, and
 	// Zellij templates are absent, so those recipes are skipped (☐).
 	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
 	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
@@ -68,6 +73,7 @@ func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	err := root.Execute()
 	require.NoError(t, err)
 
+	assert.Contains(t, out.String(), "  ☐ fzf\n")
 	assert.Contains(t, out.String(), "  ☑ Ghostty\n")
 	assert.Contains(t, out.String(), "  ☐ Neovim\n")
 	assert.Contains(t, out.String(), "  ☐ Zellij\n")

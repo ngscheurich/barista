@@ -38,6 +38,7 @@ func useTempDirs(t *testing.T) (configDir, dataDir string) {
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 	t.Setenv("XDG_DATA_HOME", dataDir)
 	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	t.Setenv("FZF_DEFAULT_OPTS_FILE", filepath.Join(configDir, "barista", "fzfrc"))
 	return configDir, dataDir
 }
 
@@ -49,6 +50,7 @@ func writeFlavor(t *testing.T, configDir, dirname string) {
 	flavorDir := filepath.Join(configDir, "barista", "flavors", dirname)
 	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "fzf.rc.mustache"), []byte("# {{name}}"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "neovim.lua.mustache"), []byte("local name = {{name}}"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "zellij.kdl.mustache"), []byte("name = {{name}}"), 0o644))

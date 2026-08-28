@@ -10,6 +10,7 @@ import (
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/paths"
 	"github.com/ngscheurich/barista/internal/recipe"
+	"github.com/ngscheurich/barista/internal/recipe/fzf"
 	"github.com/ngscheurich/barista/internal/recipe/ghostty"
 	"github.com/ngscheurich/barista/internal/recipe/neovim"
 	"github.com/ngscheurich/barista/internal/recipe/zellij"
@@ -60,6 +61,11 @@ func apply(out io.Writer, theme string) error {
 		return fmt.Errorf("apply %s: %w", theme, err)
 	}
 
+	fzfOut, err := fzf.OutputFilePath()
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
 	f, err := flavor.Load(flavorsDir, theme)
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", theme, err)
@@ -72,6 +78,7 @@ func apply(out io.Writer, theme string) error {
 		name string
 		r    recipe.Recipe
 	}{
+		{name: "fzf", r: fzf.New(flavorsDir, fzfOut)},
 		{name: "Ghostty", r: ghostty.New(flavorsDir, dataDir)},
 		{name: "Neovim", r: neovim.New(flavorsDir, dataDir)},
 		{name: "Zellij", r: zellij.New(flavorsDir, configDir)},
