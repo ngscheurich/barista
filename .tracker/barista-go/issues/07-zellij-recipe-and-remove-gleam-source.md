@@ -6,11 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/recipe/zellij` locates, reads, renders, and writes `barista.kdl` to `<config dir>/zellij/themes/` (creating the dir)
-- [ ] Zellij reload runs `touch <config dir>/zellij/config.kdl` via `os/exec` (no `sh -c`)
-- [ ] Zellij recipe wired into the `apply` loop (all three recipes in the aggregated-error slice)
-- [ ] Gleam source removed (`src/`, `gleam.toml`, `manifest.toml`, `build/`, `priv/`)
-- [ ] Any remaining Erlang-specific `.gitignore` entries removed
-- [ ] `README.md` development commands updated to `go run` / `go test`
-- [ ] Integration test: all three recipes run from one `apply` invocation; a missing-template recipe errors without blocking the others
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/recipe/zellij` locates, reads, renders, and writes `barista.kdl` to `<config dir>/zellij/themes/` (creating the dir)
+- [x] Zellij reload runs `touch <config dir>/zellij/config.kdl` via `os/exec` (no `sh -c`)
+- [x] Zellij recipe wired into the `apply` loop (all three recipes in the aggregated-error slice)
+- [x] Gleam source removed (`src/`, `gleam.toml`, `manifest.toml`, `build/`, `priv/`)
+- [x] Any remaining Erlang-specific `.gitignore` entries removed
+- [x] `README.md` development commands updated to `go run` / `go test`
+- [x] Integration test: all three recipes run from one `apply` invocation; a missing-template recipe errors without blocking the others
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass

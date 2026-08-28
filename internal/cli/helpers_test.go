@@ -51,6 +51,7 @@ func writeFlavor(t *testing.T, configDir, dirname string) {
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "neovim.lua.mustache"), []byte("local name = {{name}}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "zellij.kdl.mustache"), []byte("name = {{name}}"), 0o644))
 }
 
 // fullFlavorTOML is a complete flavor.toml with all 26 colors so flavor.Load

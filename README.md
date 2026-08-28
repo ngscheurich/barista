@@ -1,11 +1,14 @@
 # Barista
 
-[![Package Version](https://img.shields.io/hexpm/v/barista)](https://hex.pm/packages/barista)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/barista/)
+Barista takes a flavor (a named color palette in Catppuccin's format) and
+serves it to terminal applications — rendering templates into theme files
+and triggering a reload in each.
 
 # Flavors
 
-Flavors consist of a `flavor.toml` data file and one or more application templates. By default, user-specified flavors are located at `$XDG_CONFIG_HOME/barista/flavors`.
+Flavors consist of a `flavor.toml` data file and one or more application
+templates. By default, user-specified flavors are located at
+`$XDG_CONFIG_HOME/barista/flavors`.
 
 ## Example
 
@@ -16,7 +19,8 @@ Flavors consist of a `flavor.toml` data file and one or more application templat
         └── catppuccin-mocha
             ├── flavor.toml
             ├── ghostty.mustache
-            └── neovim.lua.mustache
+            ├── neovim.lua.mustache
+            └── zellij.kdl.mustache
 ```
 
 # Recipes
@@ -26,14 +30,16 @@ A recipe tells Barista how to:
 1. Convert a flavor template into a theme for a particular application
 2. Load the new theme in the application after conversion
 
-Recipes output application themes to `$XDG_DATA_HOME/barista`.
+Recipes output application themes to `$XDG_DATA_HOME/barista`, except
+Zellij, which reads its themes from the user's config directory.
 
 ## Ghostty
 
-The [Ghostty] recipe writes a config file called `ghostty`. Load this file in your main Ghostty config.
+The [Ghostty] recipe writes a config file called `ghostty`. Load this file
+in your main Ghostty config.
 
 ```
-?~/.local/share/barista/ghostty`
+~/.local/share/barista/ghostty
 ```
 
 ## Neovim
@@ -43,7 +49,8 @@ The [Neovim] recipe has two dependencies:
 - [Barista for Neovim], to load the current flavor
 - [Catppuccin for Neovim], the theming framework
 
-The recipe outputs a flavor plugin to `~/.local/share/barista/nvim`. Load the plugin in your Neovim config and run `setup`.
+The recipe outputs a flavor plugin to `~/.local/share/barista/nvim`. Load
+the plugin in your Neovim config and run `setup`.
 
 > [!IMPORTANT]
 > Ensure the dependencies are available when you run `setup`.
@@ -62,27 +69,33 @@ require("barista").setup()
 require("barista").setup(require("my.statusline").setup)
 ```
 
+## Zellij
+
+The [Zellij] recipe writes a theme file called `barista.kdl` to
+`~/.config/zellij/themes/`. Zellij picks up themes from this directory on
+reload, which the recipe triggers by touching `config.kdl`.
+
+```
+~/.config/zellij/themes/barista.kdl
+```
+
 # Usage
 
 ```sh
-gleam add barista@1
+barista apply <theme>
 ```
 
-```gleam
-import barista
-
-pub fn main() -> Nil {
-  // TODO: An example of the project in use
-}
-```
-
-Further documentation can be found at <https://hexdocs.pm/barista>.
+`<theme>` is the directory name of a flavor under the flavors directory.
+On success Barista prints `☕︎ Served up <name>` (the flavor's name, not
+the dirname) and exits zero; on any failure it prints the error(s) to
+stderr and exits non-zero.
 
 ## Development
 
 ```sh
-gleam run   # Run the project
-gleam test  # Run the tests
+go run ./cmd/barista apply <theme>   # Run the CLI
+go test ./...                         # Run the tests
+go build -o bin/barista ./cmd/barista # Build the binary
 ```
 
 ## Tasks
@@ -100,7 +113,8 @@ gleam test  # Run the tests
 - [ ] Allow skipping applications via config file
 - [ ] Only try applications with an available template?
 
-[barista for neovim]: https://github.com/ngscheurich/barista-nvim
+[barista for neovim]: https://github.com/ngscheurich/barista.nvim
 [catppuccin for neovim]: https://github.com/catppuccin/nvim
 [ghostty]: https://ghostty.org/
 [neovim]: https://neovim.io/
+[zellij]: https://zellij.dev/

@@ -12,6 +12,7 @@ import (
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/ghostty"
 	"github.com/ngscheurich/barista/internal/recipe/neovim"
+	"github.com/ngscheurich/barista/internal/recipe/zellij"
 )
 
 func newApplyCmd() *cobra.Command {
@@ -54,6 +55,11 @@ func apply(out io.Writer, theme string) error {
 		return fmt.Errorf("apply %s: %w", theme, err)
 	}
 
+	configDir, err := paths.ConfigDir()
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
 	flavorsDir, err := paths.FlavorsDir()
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", theme, err)
@@ -67,6 +73,7 @@ func apply(out io.Writer, theme string) error {
 	recipes := []recipe.Recipe{
 		ghostty.New(flavorsDir, dataDir),
 		neovim.New(flavorsDir, dataDir),
+		zellij.New(flavorsDir, configDir),
 	}
 
 	var errs []error
