@@ -58,6 +58,41 @@ type Flavor struct {
 	Palette Palette
 }
 
+// AsMap exposes the 26 Catppuccin colors keyed by the snake_case names that
+// templates reference, so a Mustache context can offer {{palette.rosewater}}
+// and the rest. This is the single enumeration of the color list for
+// rendering; the only other site is the paletteFile decode tags in Load.
+func (p Palette) AsMap() map[string]string {
+	return map[string]string{
+		"rosewater": p.Rosewater,
+		"flamingo":  p.Flamingo,
+		"pink":      p.Pink,
+		"mauve":     p.Mauve,
+		"red":       p.Red,
+		"maroon":    p.Maroon,
+		"peach":     p.Peach,
+		"yellow":    p.Yellow,
+		"green":     p.Green,
+		"teal":      p.Teal,
+		"sky":       p.Sky,
+		"sapphire":  p.Sapphire,
+		"blue":      p.Blue,
+		"lavender":  p.Lavender,
+		"text":      p.Text,
+		"subtext_1": p.Subtext1,
+		"subtext_0": p.Subtext0,
+		"overlay_2": p.Overlay2,
+		"overlay_1": p.Overlay1,
+		"overlay_0": p.Overlay0,
+		"surface_2": p.Surface2,
+		"surface_1": p.Surface1,
+		"surface_0": p.Surface0,
+		"base":      p.Base,
+		"mantle":    p.Mantle,
+		"crust":     p.Crust,
+	}
+}
+
 // Load reads and parses the flavor named dirname from the flavors directory,
 // returning a Flavor ready to be rendered against a template.
 func Load(flavorsDir, dirname string) (Flavor, error) {
@@ -75,7 +110,7 @@ func Load(flavorsDir, dirname string) (Flavor, error) {
 		return Flavor{}, fmt.Errorf("parse flavor %s: %w", dirname, err)
 	}
 	if missing := missingFields(f); missing != "" {
-		return Flavor{}, fmt.Errorf("parse flavor %s: %s not found", dirname, missing)
+		return Flavor{}, fmt.Errorf("parse flavor %s: missing required field %s", dirname, missing)
 	}
 	return Flavor{
 		Name:    f.Name,
@@ -124,9 +159,10 @@ type paletteFile struct {
 
 // missingFields returns the name of the first required field that is
 // absent from the decoded file, or the empty string if all are present.
-// BurntSushi/toml leaves missing keys as zero values rather than erroring,
-// so required-ness is enforced here, mirroring the Gleam version's
-// per-field tom.get_string lookups.
+// BurntSushi/toml leaves missing keys as zero values rather than
+// erroring, so a flavor.toml missing a color would otherwise decode to
+// an empty string and render silently; the spec requires a missing color
+// to fail the load, so required-ness is enforced here.
 func missingFields(f flavorFile) string {
 	if f.Name == "" {
 		return "name"
