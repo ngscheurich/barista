@@ -12,6 +12,9 @@ templates. By default, user-specified flavors are located at
 
 ## Example
 
+A flavor is a directory under `flavors/` containing a `flavor.toml` data
+file and one Mustache template per application:
+
 ```
 ~/.config
 └── barista
@@ -22,6 +25,54 @@ templates. By default, user-specified flavors are located at
             ├── neovim.lua.mustache
             └── zellij.kdl.mustache
 ```
+
+`flavor.toml` carries the flavor's name and a `[palette]` table of all 26
+Catppuccin colors:
+
+```toml
+name = "Catppuccin Mocha"
+
+[palette]
+rosewater = "#f5e0dc"
+flamingo  = "#f2cdcd"
+pink      = "#f5c2e7"
+mauve     = "#cba6f7"
+red       = "#f38ba8"
+maroon    = "#eba0ac"
+peach     = "#fab387"
+yellow    = "#f9e2af"
+green     = "#a6e3a1"
+teal      = "#94e2d5"
+sky       = "#89dceb"
+sapphire  = "#74c7ec"
+blue      = "#89b4fa"
+lavender  = "#b4befe"
+text      = "#cdd6f4"
+subtext_1 = "#bac2de"
+subtext_0 = "#a6adc8"
+overlay_2 = "#9399b2"
+overlay_1 = "#7f849c"
+overlay_0 = "#6c7086"
+surface_2 = "#585b70"
+surface_1 = "#45475a"
+surface_0 = "#313244"
+base      = "#1e1e2e"
+mantle    = "#181825"
+crust     = "#11111b"
+```
+
+Each template is a Mustache file that references `{{name}}` and
+`{{palette.<color>}}`. For example, `ghostty.mustache`:
+
+```
+# {{name}}
+background = {{palette.base}}
+foreground = {{palette.text}}
+cursor-color = {{palette.rosewater}}
+```
+
+Running `barista apply catppuccin-mocha` renders each template against the
+flavor and writes the result to the application's theme location.
 
 # Recipes
 
