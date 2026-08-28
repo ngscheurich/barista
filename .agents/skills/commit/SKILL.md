@@ -94,10 +94,10 @@ A commit message is prose and should be written in a style cohesive with the pro
 
 ## Attribution
 
-End every commit you author with a `Co-Authored-By` trailer, after a blank line, that identifies you — the authoring coding agent — by name and a noreply address. Fill in your own identity:
+End every commit you author with a `Co-Authored-By` trailer, after a blank line, that identifies the in-use LLM by name. Fill in its identity:
 
 ```
-Co-Authored-By: <agent name and version> <noreply address>
+Co-Authored-By: <model name>
 ```
 
 ## Examples
@@ -110,11 +110,11 @@ body stays opaque, per ADR-0011, so a document whose body is malformed
 still yields its metadata. Absent fields read as absent rather than
 erroring, so partial documents don't crash reads.
 
-Co-Authored-By: Example Agent 1.0 <noreply@example.com>
+Co-Authored-By: Example LLM 6
 ```
 
 ```
 chore: drop the stale dependency lockfile
 
-Co-Authored-By: Example Agent 1.0 <noreply@example.com>
+Co-Authored-By: Model-4.3
 ```
