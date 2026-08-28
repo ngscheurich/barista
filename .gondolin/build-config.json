@@ -1,0 +1,52 @@
+{
+  "arch": "aarch64",
+  "distro": "alpine",
+  "env": {
+    "GOROOT": "/opt/go",
+    "GOPATH": "/opt/gopath",
+    "GOMODCACHE": "/opt/gopath/pkg/mod",
+    "GOCACHE": "/opt/go-build",
+    "PATH": "/opt/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "LANG": "C.UTF-8"
+  },
+  "alpine": {
+    "version": "3.23.0",
+    "kernelPackage": "linux-virt",
+    "kernelImage": "vmlinuz-virt",
+    "rootfsPackages": [
+      "bash",
+      "build-base",
+      "ca-certificates",
+      "coreutils",
+      "curl",
+      "e2fsprogs",
+      "e2fsprogs-extra",
+      "findutils",
+      "git",
+      "grep",
+      "linux-virt",
+      "rng-tools",
+      "sed",
+      "tar",
+      "xz"
+    ],
+    "initramfsPackages": [],
+    "krunfwVersion": "v5.2.1"
+  },
+  "rootfs": {
+    "label": "gondolin-root",
+    "sizeMb": 2048
+  },
+  "runtimeDefaults": {
+    "rootfsMode": "cow"
+  },
+  "init": {
+    "rootfsInitExtra": "./rootfs-init-extra.sh"
+  },
+  "postBuild": {
+    "copy": [
+      { "src": "./post-build.sh", "dest": "/tmp/post-build.sh" }
+    ],
+    "commands": ["sh /tmp/post-build.sh"]
+  }
+}
