@@ -28,18 +28,11 @@ func newApplyCmd() *cobra.Command {
 
 // runApply is the apply command's body, split out so a test can call it
 // with a controlled command (and captured stdout/stderr) without going
-// through the cobra tree. The returned error is printed to stderr here
-// so the command's contract -- failure prints to stderr and exits
-// non-zero -- holds regardless of which step failed.
+// through the cobra tree. The returned error is surfaced to the caller
+// (cobra, then main), which is responsible for printing it to stderr;
+// the root command sets SilenceErrors so cobra does not print it itself.
 func runApply(cmd *cobra.Command, theme string) error {
-	out := cmd.OutOrStdout()
-	errOut := cmd.ErrOrStderr()
-
-	if err := apply(out, theme); err != nil {
-		fmt.Fprintln(errOut, err)
-		return err
-	}
-	return nil
+	return apply(cmd.OutOrStdout(), theme)
 }
 
 // apply runs the full theming pipeline for one theme: ensure the data

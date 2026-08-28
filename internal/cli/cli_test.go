@@ -58,12 +58,12 @@ func TestApplyMissingTemplateDoesNotBlockOtherRecipes(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
 
-	root, _, errOut := newRoot([]string{"apply", "catppuccin-mocha"})
+	root, _, _ := newRoot([]string{"apply", "catppuccin-mocha"})
 
 	err := root.Execute()
 	require.Error(t, err)
-	assert.Contains(t, errOut.String(), "neovim")
-	assert.Contains(t, errOut.String(), "zellij")
+	assert.Contains(t, err.Error(), "neovim")
+	assert.Contains(t, err.Error(), "zellij")
 
 	// Ghostty still wrote its theme despite the other two failing.
 	assert.FileExists(t, filepath.Join(dataDir, "barista", "ghostty"))
@@ -73,11 +73,11 @@ func TestApplyMissingTemplateDoesNotBlockOtherRecipes(t *testing.T) {
 func TestApplyMissingFlavorFails(t *testing.T) {
 	useTempDirs(t)
 
-	root, _, errOut := newRoot([]string{"apply", "nope"})
+	root, _, _ := newRoot([]string{"apply", "nope"})
 
 	err := root.Execute()
 	require.Error(t, err)
-	assert.Contains(t, errOut.String(), "nope")
+	assert.Contains(t, err.Error(), "nope")
 }
 
 // apply rejects more than one positional arg.
