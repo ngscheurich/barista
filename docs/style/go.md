@@ -38,7 +38,7 @@ testdata/                           # golden files, fixtures (Go reserves this d
 ```
 module github.com/ngscheurich/barista
 
-go 1.26
+go 1.27
 
 require (
     github.com/spf13/cobra v1.8.0

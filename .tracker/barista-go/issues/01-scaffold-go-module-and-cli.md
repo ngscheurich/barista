@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] `go.mod` present with module `github.com/ngscheurich/barista`, `go 1.26`, cobra required
+- [ ] `go.mod` present with module `github.com/ngscheurich/barista`, `go 1.27`, cobra required
 - [ ] `cmd/barista/main.go` wires a Cobra root + `apply <theme>` subcommand (one positional arg)
 - [ ] `barista apply <theme>` prints the theme name and exits zero; `barista` with no args prints help
 - [ ] `.gitignore` rewritten for Go (Gleam/Erlang entries dropped, `/bin/` and Go build conventions added)
