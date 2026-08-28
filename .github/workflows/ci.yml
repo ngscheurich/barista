@@ -3,7 +3,6 @@ name: ci
 on:
   push:
     branches:
-      - master
       - main
   pull_request:
 
@@ -12,12 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@v1
+      - uses: actions/setup-go@v5
         with:
-          otp-version: "28"
-          gleam-version: "1.14.0"
-          rebar3-version: "3"
-          # elixir-version: "1"
-      - run: gleam deps download
-      - run: gleam test
-      - run: gleam format --check src test
+          go-version: "1.27"
+      - run: go build ./...
+      - run: go test ./...
+      - run: go vet ./...
+      - name: check formatting
+        run: test -z "$(gofmt -l .)"
