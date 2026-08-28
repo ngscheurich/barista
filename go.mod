@@ -3,6 +3,7 @@ module github.com/ngscheurich/barista
 go 1.27
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.12.1
 )

@@ -1,0 +1,168 @@
+// Package flavor defines the Flavor domain type and its loading from disk.
+//
+// A Flavor is a named collection of 26 Catppuccin colors (a Palette) read
+// from a flavor.toml file under the flavors directory. The on-disk TOML
+// shape is decoded into an unexported mirror struct so adding a TOML field
+// later does not force the exported domain type to change shape in lockstep.
+package flavor
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/BurntSushi/toml"
+)
+
+// ErrNotFound is returned when a flavor's flavor.toml is missing. Callers
+// distinguish missing-file from parse failures via errors.Is.
+var ErrNotFound = errors.New("flavor not found")
+
+// Palette is the 26 Catppuccin color values inside a Flavor.
+type Palette struct {
+	Rosewater string
+	Flamingo  string
+	Pink      string
+	Mauve     string
+	Red       string
+	Maroon    string
+	Peach     string
+	Yellow    string
+	Green     string
+	Teal      string
+	Sky       string
+	Sapphire  string
+	Blue      string
+	Lavender  string
+	Text      string
+	Subtext1  string
+	Subtext0  string
+	Overlay2  string
+	Overlay1  string
+	Overlay0  string
+	Surface2  string
+	Surface1  string
+	Surface0  string
+	Base      string
+	Mantle    string
+	Crust     string
+}
+
+// Flavor is a named collection of colors that maps to the Catppuccin palette
+// spec. Dirname is the on-disk directory name the flavor was loaded from;
+// Name is the human-facing name field from flavor.toml.
+type Flavor struct {
+	Name    string
+	Dirname string
+	Palette Palette
+}
+
+// Load reads and parses the flavor named dirname from the flavors directory,
+// returning a Flavor ready to be rendered against a template.
+func Load(flavorsDir, dirname string) (Flavor, error) {
+	p := filepath.Join(flavorsDir, dirname, "flavor.toml")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, ErrNotFound)
+		}
+		return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, err)
+	}
+
+	var f flavorFile
+	if err := toml.Unmarshal(raw, &f); err != nil {
+		return Flavor{}, fmt.Errorf("parse flavor %s: %w", dirname, err)
+	}
+	if missing := missingFields(f); missing != "" {
+		return Flavor{}, fmt.Errorf("parse flavor %s: %s not found", dirname, missing)
+	}
+	return Flavor{
+		Name:    f.Name,
+		Dirname: dirname,
+		// Tags are ignored for struct conversion, so the untagged Palette
+		// is built from the tagged paletteFile in one move.
+		Palette: Palette(f.Palette),
+	}, nil
+}
+
+// flavorFile mirrors the on-disk flavor.toml shape. TOML keys are
+// snake_case; the tags bridge them to MixedCaps Go identifiers.
+type flavorFile struct {
+	Name    string      `toml:"name"`
+	Palette paletteFile `toml:"palette"`
+}
+
+type paletteFile struct {
+	Rosewater string `toml:"rosewater"`
+	Flamingo  string `toml:"flamingo"`
+	Pink      string `toml:"pink"`
+	Mauve     string `toml:"mauve"`
+	Red       string `toml:"red"`
+	Maroon    string `toml:"maroon"`
+	Peach     string `toml:"peach"`
+	Yellow    string `toml:"yellow"`
+	Green     string `toml:"green"`
+	Teal      string `toml:"teal"`
+	Sky       string `toml:"sky"`
+	Sapphire  string `toml:"sapphire"`
+	Blue      string `toml:"blue"`
+	Lavender  string `toml:"lavender"`
+	Text      string `toml:"text"`
+	Subtext1  string `toml:"subtext_1"`
+	Subtext0  string `toml:"subtext_0"`
+	Overlay2  string `toml:"overlay_2"`
+	Overlay1  string `toml:"overlay_1"`
+	Overlay0  string `toml:"overlay_0"`
+	Surface2  string `toml:"surface_2"`
+	Surface1  string `toml:"surface_1"`
+	Surface0  string `toml:"surface_0"`
+	Base      string `toml:"base"`
+	Mantle    string `toml:"mantle"`
+	Crust     string `toml:"crust"`
+}
+
+// missingFields returns the name of the first required field that is
+// absent from the decoded file, or the empty string if all are present.
+// BurntSushi/toml leaves missing keys as zero values rather than erroring,
+// so required-ness is enforced here, mirroring the Gleam version's
+// per-field tom.get_string lookups.
+func missingFields(f flavorFile) string {
+	if f.Name == "" {
+		return "name"
+	}
+	type kv struct{ key, val string }
+	for _, c := range []kv{
+		{"rosewater", f.Palette.Rosewater},
+		{"flamingo", f.Palette.Flamingo},
+		{"pink", f.Palette.Pink},
+		{"mauve", f.Palette.Mauve},
+		{"red", f.Palette.Red},
+		{"maroon", f.Palette.Maroon},
+		{"peach", f.Palette.Peach},
+		{"yellow", f.Palette.Yellow},
+		{"green", f.Palette.Green},
+		{"teal", f.Palette.Teal},
+		{"sky", f.Palette.Sky},
+		{"sapphire", f.Palette.Sapphire},
+		{"blue", f.Palette.Blue},
+		{"lavender", f.Palette.Lavender},
+		{"text", f.Palette.Text},
+		{"subtext_1", f.Palette.Subtext1},
+		{"subtext_0", f.Palette.Subtext0},
+		{"overlay_2", f.Palette.Overlay2},
+		{"overlay_1", f.Palette.Overlay1},
+		{"overlay_0", f.Palette.Overlay0},
+		{"surface_2", f.Palette.Surface2},
+		{"surface_1", f.Palette.Surface1},
+		{"surface_0", f.Palette.Surface0},
+		{"base", f.Palette.Base},
+		{"mantle", f.Palette.Mantle},
+		{"crust", f.Palette.Crust},
+	} {
+		if c.val == "" {
+			return "palette." + c.key
+		}
+	}
+	return ""
+}

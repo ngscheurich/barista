@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/flavor` exports `Flavor` (Name, Dirname, Palette) and `Palette` (all 26 Catppuccin colors)
-- [ ] `Load(flavorsDir, dirname)` reads and parses `flavor.toml` via `BurntSushi/toml`
-- [ ] Unexported mirror struct with `toml:"..."` tags decouples on-disk shape from domain type
-- [ ] `snake_case` TOML keys map to MixedCaps Go identifiers (`subtext_1` → `Subtext1`)
-- [ ] Missing file returns a wrappable `ErrNotFound`; parse errors wrapped with `%w`
-- [ ] Table-driven tests cover valid palette, missing color, wrong type, missing file
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/flavor` exports `Flavor` (Name, Dirname, Palette) and `Palette` (all 26 Catppuccin colors)
+- [x] `Load(flavorsDir, dirname)` reads and parses `flavor.toml` via `BurntSushi/toml`
+- [x] Unexported mirror struct with `toml:"..."` tags decouples on-disk shape from domain type
+- [x] `snake_case` TOML keys map to MixedCaps Go identifiers (`subtext_1` → `Subtext1`)
+- [x] Missing file returns a wrappable `ErrNotFound`; parse errors wrapped with `%w`
+- [x] Table-driven tests cover valid palette, missing color, wrong type, missing file
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass
