@@ -61,14 +61,28 @@ mantle    = "#181825"
 crust     = "#11111b"
 ```
 
-Each template is a Mustache file that references `{{name}}` and
-`{{palette.<color>}}`. For example, `ghostty.mustache`:
+Each template is a Mustache file rendered against two context keys:
+
+- `{{name}}` — the flavor's `name` string.
+- `{{palette.<color>}}` — any of the 26 Catppuccin colors by its
+  snake_case name (`rosewater`, `flamingo`, … `crust`).
+
+For example, `ghostty.mustache`:
 
 ```
 # {{name}}
 background = {{palette.base}}
 foreground = {{palette.text}}
 cursor-color = {{palette.rosewater}}
+```
+
+Rendered against the Catppuccin Mocha flavor above, that becomes:
+
+```
+# Catppuccin Mocha
+background = #1e1e2e
+foreground = #cdd6f4
+cursor-color = #f5e0dc
 ```
 
 Running `barista apply catppuccin-mocha` renders each template against the
