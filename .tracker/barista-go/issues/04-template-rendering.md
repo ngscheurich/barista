@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/template.Render(tmpl, f)` renders a Mustache template against a flavor
-- [ ] Context exposes `{{name}}` and `{{palette.<color>}}` for all 26 Catppuccin colors
-- [ ] Uses `cbroglie/mustache`'s error-returning API; errors wrapped with `%w`
-- [ ] Tests cover a valid template with `{{name}}` and nested `{{palette.<color>}}` access, and an invalid template
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/template.Render(tmpl, f)` renders a Mustache template against a flavor
+- [x] Context exposes `{{name}}` and `{{palette.<color>}}` for all 26 Catppuccin colors
+- [x] Uses `cbroglie/mustache`'s error-returning API; errors wrapped with `%w`
+- [x] Tests cover a valid template with `{{name}}` and nested `{{palette.<color>}}` access, and an invalid template
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass
