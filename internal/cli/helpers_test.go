@@ -24,28 +24,33 @@ func newRoot(args []string) (root *cobra.Command, out, errOut *bytes.Buffer) {
 	return root, out, errOut
 }
 
-// useTempDirs points XDG_CONFIG_HOME and XDG_DATA_HOME at freshly-made
-// temp directories and returns them, so the apply command resolves paths
-// inside the test sandbox rather than the user's real config.
+// useTempDirs points XDG_CONFIG_HOME, XDG_DATA_HOME, and XDG_RUNTIME_DIR
+// at freshly-made temp directories and returns the config and data dirs,
+// so the apply command resolves paths inside the test sandbox rather than
+// the user's real config. XDG_RUNTIME_DIR is sandboxed so Neovim socket
+// discovery does not touch the real runtime dir.
 func useTempDirs(t *testing.T) (configDir, dataDir string) {
 	t.Helper()
 	configDir = t.TempDir()
 	dataDir = t.TempDir()
+	runtimeDir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(configDir, "barista"), 0o755))
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 	t.Setenv("XDG_DATA_HOME", dataDir)
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
 	return configDir, dataDir
 }
 
 // writeFlavor creates a flavors/<dirname> directory under configDir with a
-// complete flavor.toml and a ghostty.mustache template, so apply can load
-// and render the flavor end-to-end.
+// complete flavor.toml and a mustache template per recipe, so apply can
+// load and render the flavor end-to-end across every recipe.
 func writeFlavor(t *testing.T, configDir, dirname string) {
 	t.Helper()
 	flavorDir := filepath.Join(configDir, "barista", "flavors", dirname)
 	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "neovim.lua.mustache"), []byte("local name = {{name}}"), 0o644))
 }
 
 // fullFlavorTOML is a complete flavor.toml with all 26 colors so flavor.Load

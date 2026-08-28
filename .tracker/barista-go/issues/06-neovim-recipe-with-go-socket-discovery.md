@@ -6,11 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/nvim.DiscoverSockets()` walks `$XDG_RUNTIME_DIR` (fallback `$TMPDIR/nvim.<user>`) for `nvim.*.0` entries
-- [ ] The `nvim.*.0` glob and fallback path preserved exactly (Neovim server-discovery contract)
-- [ ] `internal/recipe/neovim` locates, reads, renders, and writes `flavor.lua` to `<data dir>/nvim/lua/` (creating the dir)
-- [ ] Reload calls `nvim --server <socket> --remote-send` on every discovered socket via `os/exec` (no `sh -c`)
-- [ ] Neovim recipe wired into the `apply` loop (two recipes in the aggregated-error slice)
-- [ ] `DiscoverSockets` unit-tested with a temp dir, fake socket files, `t.Setenv`, and the fallback case
-- [ ] Reload tested via the command-construction seam
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/nvim.DiscoverSockets()` walks `$XDG_RUNTIME_DIR` (fallback `$TMPDIR/nvim.<user>`) for `nvim.*.0` entries
+- [x] The `nvim.*.0` glob and fallback path preserved exactly (Neovim server-discovery contract)
+- [x] `internal/recipe/neovim` locates, reads, renders, and writes `flavor.lua` to `<data dir>/nvim/lua/` (creating the dir)
+- [x] Reload calls `nvim --server <socket> --remote-send` on every discovered socket via `os/exec` (no `sh -c`)
+- [x] Neovim recipe wired into the `apply` loop (two recipes in the aggregated-error slice)
+- [x] `DiscoverSockets` unit-tested with a temp dir, fake socket files, `t.Setenv`, and the fallback case
+- [x] Reload tested via the command-construction seam
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass

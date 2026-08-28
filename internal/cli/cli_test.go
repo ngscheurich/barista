@@ -10,7 +10,8 @@ import (
 )
 
 // apply <theme> with a real flavor and template writes the rendered theme
-// to the data dir and prints the success line with the flavor's Name.
+// for every recipe to the data dir and prints the success line with the
+// flavor's Name.
 func TestApplyServesUpFlavorAndWritesTheme(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	writeFlavor(t, configDir, "catppuccin-mocha")
@@ -21,9 +22,13 @@ func TestApplyServesUpFlavorAndWritesTheme(t *testing.T) {
 
 	assert.Contains(t, out.String(), "☕︎ Served up Catppuccin Mocha")
 
-	got, err := os.ReadFile(filepath.Join(dataDir, "barista", "ghostty"))
+	gotGhostty, err := os.ReadFile(filepath.Join(dataDir, "barista", "ghostty"))
 	require.NoError(t, err)
-	assert.Equal(t, "name = Catppuccin Mocha\nbase = #1e1e2e", string(got))
+	assert.Equal(t, "name = Catppuccin Mocha\nbase = #1e1e2e", string(gotGhostty))
+
+	gotNvim, err := os.ReadFile(filepath.Join(dataDir, "barista", "nvim", "lua", "flavor.lua"))
+	require.NoError(t, err)
+	assert.Equal(t, "local name = Catppuccin Mocha", string(gotNvim))
 }
 
 // apply prints the flavor's Name, not the dirname.

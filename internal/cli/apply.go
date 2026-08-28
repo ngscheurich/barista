@@ -11,6 +11,7 @@ import (
 	"github.com/ngscheurich/barista/internal/paths"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/ghostty"
+	"github.com/ngscheurich/barista/internal/recipe/neovim"
 )
 
 func newApplyCmd() *cobra.Command {
@@ -65,6 +66,7 @@ func apply(out io.Writer, theme string) error {
 
 	recipes := []recipe.Recipe{
 		ghostty.New(flavorsDir, dataDir),
+		neovim.New(flavorsDir, dataDir),
 	}
 
 	var errs []error
