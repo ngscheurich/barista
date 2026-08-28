@@ -21,7 +21,18 @@ import (
 // tags ({{name}}, {{palette.rosewater}}) resolve case-sensitively;
 // cbroglie/mustache looks up struct fields via reflect.FieldByName with
 // no tag support, so a struct cannot expose the lowercase keys.
+//
+// An unknown template variable is a hard error, not a silent empty
+// string: cbroglie/mustache defaults to the Mustache-spec behaviour of
+// emitting nothing for a miss, which would let a typo in a recipe
+// template ({{palette.raosewater}}) write a broken theme file with no
+// signal. AllowMissingVariables is a package-level switch, so Render
+// flips it off for the whole process on first use. Barista is the binary's
+// only mustache consumer and recipes render sequentially, so the global
+// is safe to set here.
 func Render(tmpl string, f flavor.Flavor) (string, error) {
+	mustache.AllowMissingVariables = false
+
 	rendered, err := mustache.Render(tmpl, map[string]interface{}{
 		"name":    f.Name,
 		"palette": f.Palette.AsMap(),

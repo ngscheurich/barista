@@ -107,14 +107,25 @@ func TestRenderExposesAll26Colors(t *testing.T) {
 	}
 }
 
-// A missing color in the context renders as empty, not an error -- Mustache's
-// spec behaviour -- so this documents the contract rather than asserting a
-// failure. (All 26 are populated in practice; this guards the fallback.)
-func TestRenderMissingColorIsEmpty(t *testing.T) {
-	got, err := template.Render("[{{palette.nonexistent}}]", sampleFlavor())
+// An unknown template variable is a hard error rather than a silent empty
+// string, so a typo in a recipe template (e.g. {{palette.raosewater}})
+// surfaces instead of writing a broken theme file. cbroglie/mustache names
+// the offending variable in the error.
+func TestRenderUnknownVariableFails(t *testing.T) {
+	_, err := template.Render("[{{palette.nonexistent}}]", sampleFlavor())
 
-	require.NoError(t, err)
-	assert.Equal(t, "[]", got)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "render template")
+	assert.Contains(t, err.Error(), "nonexistent")
+}
+
+// An unknown top-level variable fails the same way a missing palette key
+// does; the strictness covers the whole context, not just the palette map.
+func TestRenderUnknownTopLevelVariableFails(t *testing.T) {
+	_, err := template.Render("{{bogus}}", sampleFlavor())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bogus")
 }
 
 // An unbalanced tag is a parse error from mustache, wrapped with %w so
