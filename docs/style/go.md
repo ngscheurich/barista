@@ -464,20 +464,24 @@ Note the mapping: TOML keys are `snake_case` (`subtext_1`), Go identifiers are M
 
 ### 9.2 Mustache
 
-`cbroglie/mustache` renders a template string against a data value. The data value can be a struct, a map, or a combination — Mustache resolves fields by name. For Barista, build the context as a struct or map matching the template's `{{name}}` and `{{palette.rosewater}}` references:
+`cbroglie/mustache` renders a template string against a data value via `mustache.Render(data, context...)` (variadic; there is no `RenderString`). The data value can be a struct or a map — but note the library resolves names **case-sensitively** through `reflect.FieldByName`, with no struct-tag support, so a template key `{{name}}` will *not* find an exported Go field `Name`. Lowercase template keys therefore require a `map`, not a struct. For Barista, build the context as a map matching the template's `{{name}}` and `{{palette.rosewater}}` references, and put the palette→map conversion on the type that owns the colors:
 
 ```go
-type templateContext struct {
-    Name    string
-    Palette map[string]string
+// in internal/flavor
+func (p Palette) AsMap() map[string]string {
+    return map[string]string{
+        "rosewater": p.Rosewater,
+        // ... all 26 Catppuccin colors
+        "crust":     p.Crust,
+    }
 }
 
-func renderTemplate(tmpl string, f flavor.Flavor) (string, error) {
-    ctx := templateContext{
-        Name:    f.Name,
-        Palette: f.Palette.AsMap(),
-    }
-    rendered, err := mustache.RenderString(tmpl, ctx)
+// in internal/template
+func Render(tmpl string, f flavor.Flavor) (string, error) {
+    rendered, err := mustache.Render(tmpl, map[string]interface{}{
+        "name":    f.Name,
+        "palette": f.Palette.AsMap(),
+    })
     if err != nil {
         return "", fmt.Errorf("render template: %w", err)
     }
@@ -485,7 +489,7 @@ func renderTemplate(tmpl string, f flavor.Flavor) (string, error) {
 }
 ```
 
-`cbroglie/mustache` uses an idiomatic error-returning API (unlike its parent fork), so handle errors at every call.
+`cbroglie/mustache` uses an idiomatic error-returning API (unlike its parent fork), so handle errors at every call. The Gleam version built the context with a `ctx.Dict`; carry nothing of that shape over — the map and the `AsMap` method are the Go-idiomatic equivalents, not a port.
 
 ## 10. External processes and file I/O
 
@@ -879,7 +883,7 @@ func Load(flavorsDir, dirname string) (Flavor, error) {
 - [Practical Go](https://dave.cheney.net/practical-go) by Dave Cheney — long-form opinions on package design, error handling, naming.
 - [`cobra` user guide](https://github.com/spf13/cobra/blob/main/site/content/user_guide.md) — command tree, flags, completion.
 - [`BurntSushi/toml` docs](https://pkg.go.dev/github.com/BurntSushi/toml) — struct-tag decoding, `Marshaler`/`Unmarshaler`.
-- [`cbroglie/mustache` docs](https://pkg.go.dev/github.com/cbroglie/mustache) — `RenderString`, error-returning API.
+- [`cbroglie/mustache` docs](https://pkg.go.dev/github.com/cbroglie/mustache) — `Render`, error-returning API.
 - [`pkg.go.dev/os/exec`](https://pkg.go.dev/os/exec) — the canonical child-process API.
 - [`pkg.go.dev/log/slog`](https://pkg.go.dev/log/slog) — structured logging in the stdlib.
 - [Bubble Tea tutorial](https://github.com/charmbracelet/bubbletea/tree/main/tutorials) — start here when the TUI lands.
