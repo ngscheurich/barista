@@ -1,2 +1,6 @@
 [tools]
 go = "1.27"
+
+[tasks]
+clean = "rm -f $HOME/.local/bin/barists"
+build = "go build -o $HOME/.local/bin/barista ./cmd/barista"
