@@ -8,7 +8,17 @@
 // errors rather than stopping at the first.
 package recipe
 
-import "github.com/ngscheurich/barista/internal/flavor"
+import (
+	"errors"
+
+	"github.com/ngscheurich/barista/internal/flavor"
+)
+
+// ErrNotApplicable indicates a recipe's template file is absent from the
+// flavor directory, i.e. the flavor does not carry a theme for that
+// application. Orchestrators treat it as a skip rather than a failure:
+// the application is listed but not served, and the run does not abort.
+var ErrNotApplicable = errors.New("recipe not applicable: flavor has no template for this application")
 
 // Recipe is the procedure for theming and reloading one terminal
 // application. Run renders the recipe's template against f, writes the

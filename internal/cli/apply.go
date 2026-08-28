@@ -36,12 +36,14 @@ func runApply(cmd *cobra.Command, theme string) error {
 }
 
 // apply runs the full theming pipeline for one theme: ensure the data
-// dir, load the flavor, run every recipe collecting errors, and on
-// success print the served-up line with the flavor's Name. Pre-recipe
-// failures (missing data dir, missing flavor) short-circuit and return;
-// per-recipe failures are aggregated via errors.Join so one app's
-// failure does not hide another's. The caller is responsible for
-// printing the returned error to stderr.
+// dir, load the flavor, run every recipe, and print the served-up list
+// marking each app ☑ (applied) or ☐ (skipped, because the flavor carries
+// no template for it). Pre-recipe failures (missing data dir, missing
+// flavor) short-circuit and return. A recipe that returns
+// recipe.ErrNotApplicable is a skip, not a failure; every other recipe
+// error is aggregated via errors.Join so one app's failure does not hide
+// another's. The served-up list always names every configured app; the
+// caller is responsible for printing the returned error to stderr.
 func apply(out io.Writer, theme string) error {
 	dataDir, err := paths.EnsureDataDir()
 	if err != nil {
@@ -63,22 +65,36 @@ func apply(out io.Writer, theme string) error {
 		return fmt.Errorf("apply %s: %w", theme, err)
 	}
 
-	recipes := []recipe.Recipe{
-		ghostty.New(flavorsDir, dataDir),
-		neovim.New(flavorsDir, dataDir),
-		zellij.New(flavorsDir, configDir),
+	// apps pairs each recipe with the display name printed in the
+	// served-up list. Order is alphabetical by name, which governs the
+	// row order in the output.
+	apps := []struct {
+		name string
+		r    recipe.Recipe
+	}{
+		{name: "Ghostty", r: ghostty.New(flavorsDir, dataDir)},
+		{name: "Neovim", r: neovim.New(flavorsDir, dataDir)},
+		{name: "Zellij", r: zellij.New(flavorsDir, configDir)},
 	}
 
+	fmt.Fprintf(out, "☕ Served up %s to:\n\n", f.Name)
 	var errs []error
-	for _, r := range recipes {
-		if err := r.Run(f); err != nil {
+	for _, a := range apps {
+		err := a.r.Run(f)
+		switch {
+		case err == nil:
+			fmt.Fprintf(out, "  ☑ %s\n", a.name)
+		case errors.Is(err, recipe.ErrNotApplicable):
+			fmt.Fprintf(out, "  ☐ %s\n", a.name)
+		default:
+			fmt.Fprintf(out, "  ☐ %s\n", a.name)
 			errs = append(errs, err)
 		}
 	}
+	fmt.Fprintln(out)
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-
-	fmt.Fprintf(out, "☕︎ Served up %s\n", f.Name)
 	return nil
 }

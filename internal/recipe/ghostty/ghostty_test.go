@@ -1,6 +1,7 @@
 package ghostty_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ngscheurich/barista/internal/flavor"
+	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/ghostty"
 )
 
@@ -54,8 +56,10 @@ func TestRunWritesRenderedTheme(t *testing.T) {
 	assert.Equal(t, "name = Mocha\nbase = #1e1e2e\ntext = #cdd6f4", string(got))
 }
 
-// A missing template surfaces as a wrapped error naming the template path.
-func TestRunMissingTemplateFails(t *testing.T) {
+// A missing template is not-applicable rather than a failure: Run returns
+// an error wrapping recipe.ErrNotApplicable, which the orchestrator treats
+// as a skip.
+func TestRunMissingTemplateIsNotApplicable(t *testing.T) {
 	flavorsDir := t.TempDir() // no flavor dir written
 	dataDir := t.TempDir()
 
@@ -63,7 +67,8 @@ func TestRunMissingTemplateFails(t *testing.T) {
 	err := r.Run(sampleFlavor())
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ghostty")
+	assert.True(t, errors.Is(err, recipe.ErrNotApplicable),
+		"missing template should wrap recipe.ErrNotApplicable; got %v", err)
 }
 
 // The reload seam: pgrep is built with the binary name and a single arg

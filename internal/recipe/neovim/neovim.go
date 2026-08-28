@@ -6,12 +6,14 @@
 package neovim
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/nvim"
+	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
 )
 
@@ -48,6 +50,9 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("neovim: %w", recipe.ErrNotApplicable)
+		}
 		return fmt.Errorf("neovim: read template %s: %w", tmplPath, err)
 	}
 

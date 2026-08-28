@@ -1,6 +1,7 @@
 package zellij_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ngscheurich/barista/internal/flavor"
+	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/zellij"
 )
 
@@ -78,8 +80,10 @@ func TestRunTouchesConfigKdl(t *testing.T) {
 	assert.FileExists(t, filepath.Join(configDir, "zellij", "config.kdl"))
 }
 
-// A missing template surfaces as a wrapped error naming the recipe.
-func TestRunMissingTemplateFails(t *testing.T) {
+// A missing template is not-applicable rather than a failure: Run returns
+// an error wrapping recipe.ErrNotApplicable, which the orchestrator treats
+// as a skip.
+func TestRunMissingTemplateIsNotApplicable(t *testing.T) {
 	flavorsDir := t.TempDir() // no flavor dir written
 	configDir := t.TempDir()
 
@@ -87,7 +91,8 @@ func TestRunMissingTemplateFails(t *testing.T) {
 	err := r.Run(sampleFlavor())
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "zellij")
+	assert.True(t, errors.Is(err, recipe.ErrNotApplicable),
+		"missing template should wrap recipe.ErrNotApplicable; got %v", err)
 }
 
 // The reload seam: Touch builds touch <path>, calling the binary directly

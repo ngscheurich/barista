@@ -9,8 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// apply <theme> with a real flavor and all three templates writes every
-// recipe's output file and prints the success line with the flavor's Name.
+// apply <theme> with a real flavor and every template writes each
+// recipe's output file and prints the served-up block: a header with the
+// flavor's Name followed by a ☑ row per app that applied.
 func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	writeFlavor(t, configDir, "catppuccin-mocha")
@@ -19,7 +20,11 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 
-	assert.Contains(t, out.String(), "☕︎ Served up Catppuccin Mocha")
+	want := "☕ Served up Catppuccin Mocha to:\n\n" +
+		"  ☑ Ghostty\n" +
+		"  ☑ Neovim\n" +
+		"  ☑ Zellij\n\n"
+	assert.Equal(t, want, out.String())
 
 	gotGhostty, err := os.ReadFile(filepath.Join(dataDir, "barista", "ghostty"))
 	require.NoError(t, err)
@@ -46,26 +51,28 @@ func TestApplyUsesNameNotDirname(t *testing.T) {
 	assert.NotContains(t, out.String(), "catppuccin-mocha")
 }
 
-// Continue-on-error: a recipe whose template is missing errors, but the
-// other recipes still write their output files. The run exits non-zero
-// and reports the failure, per the spec's aggregated-error contract.
-func TestApplyMissingTemplateDoesNotBlockOtherRecipes(t *testing.T) {
+// A flavor that carries only some templates: the apps with templates
+// apply (☑); the apps without templates are skipped (☐), not errors, and
+// the run exits zero. The served-up list always names every configured app.
+func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	// Write the flavor with only the Ghostty template; Neovim and Zellij
-	// templates are absent, so those recipes fail but Ghostty succeeds.
+	// Write the flavor with only the Ghostty template; Fish, Neovim, and
+	// Zellij templates are absent, so those recipes are skipped (☐).
 	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
 	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
 
-	root, _, _ := newRoot([]string{"apply", "catppuccin-mocha"})
+	root, out, _ := newRoot([]string{"apply", "catppuccin-mocha"})
 
 	err := root.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "neovim")
-	assert.Contains(t, err.Error(), "zellij")
+	require.NoError(t, err)
 
-	// Ghostty still wrote its theme despite the other two failing.
+	assert.Contains(t, out.String(), "  ☑ Ghostty\n")
+	assert.Contains(t, out.String(), "  ☐ Neovim\n")
+	assert.Contains(t, out.String(), "  ☐ Zellij\n")
+
+	// Ghostty still wrote its theme.
 	assert.FileExists(t, filepath.Join(dataDir, "barista", "ghostty"))
 }
 

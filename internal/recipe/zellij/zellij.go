@@ -10,12 +10,14 @@
 package zellij
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/ngscheurich/barista/internal/flavor"
+	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
 )
 
@@ -64,6 +66,9 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("zellij: %w", recipe.ErrNotApplicable)
+		}
 		return fmt.Errorf("zellij: read template %s: %w", tmplPath, err)
 	}
 
