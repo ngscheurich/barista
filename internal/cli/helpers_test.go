@@ -2,12 +2,19 @@ package cli_test
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ngscheurich/barista/internal/cli"
 )
 
+// newRoot builds the cobra root command with its stdout and stderr
+// captured into buffers and its args set, so a test can run a command
+// and assert on its output.
 func newRoot(args []string) (root *cobra.Command, out, errOut *bytes.Buffer) {
 	out, errOut = &bytes.Buffer{}, &bytes.Buffer{}
 	root = cli.NewRoot()
@@ -16,3 +23,60 @@ func newRoot(args []string) (root *cobra.Command, out, errOut *bytes.Buffer) {
 	root.SetArgs(args)
 	return root, out, errOut
 }
+
+// useTempDirs points XDG_CONFIG_HOME and XDG_DATA_HOME at freshly-made
+// temp directories and returns them, so the apply command resolves paths
+// inside the test sandbox rather than the user's real config.
+func useTempDirs(t *testing.T) (configDir, dataDir string) {
+	t.Helper()
+	configDir = t.TempDir()
+	dataDir = t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(configDir, "barista"), 0o755))
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("XDG_DATA_HOME", dataDir)
+	return configDir, dataDir
+}
+
+// writeFlavor creates a flavors/<dirname> directory under configDir with a
+// complete flavor.toml and a ghostty.mustache template, so apply can load
+// and render the flavor end-to-end.
+func writeFlavor(t *testing.T, configDir, dirname string) {
+	t.Helper()
+	flavorDir := filepath.Join(configDir, "barista", "flavors", dirname)
+	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
+}
+
+// fullFlavorTOML is a complete flavor.toml with all 26 colors so flavor.Load
+// succeeds; only a few colors are referenced by the test template.
+const fullFlavorTOML = `name = "Catppuccin Mocha"
+
+[palette]
+rosewater = "#f5e0dc"
+flamingo = "#f2cdcd"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+maroon = "#eba0ac"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+sapphire = "#74c7ec"
+blue = "#89b4fa"
+lavender = "#b4befe"
+text = "#cdd6f4"
+subtext_1 = "#bac2de"
+subtext_0 = "#a6adc8"
+overlay_2 = "#9399b2"
+overlay_1 = "#7f849c"
+overlay_0 = "#6c7086"
+surface_2 = "#585b70"
+surface_1 = "#45475a"
+surface_0 = "#313244"
+base = "#1e1e2e"
+mantle = "#181825"
+crust = "#11111b"
+`

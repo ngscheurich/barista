@@ -1,9 +1,16 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
+
+	"github.com/ngscheurich/barista/internal/flavor"
+	"github.com/ngscheurich/barista/internal/paths"
+	"github.com/ngscheurich/barista/internal/recipe"
+	"github.com/ngscheurich/barista/internal/recipe/ghostty"
 )
 
 func newApplyCmd() *cobra.Command {
@@ -12,9 +19,64 @@ func newApplyCmd() *cobra.Command {
 		Short: "Apply a flavor to all configured applications",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			theme := args[0]
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", theme)
-			return nil
+			return runApply(cmd, args[0])
 		},
 	}
+}
+
+// runApply is the apply command's body, split out so a test can call it
+// with a controlled command (and captured stdout/stderr) without going
+// through the cobra tree. The returned error is printed to stderr here
+// so the command's contract -- failure prints to stderr and exits
+// non-zero -- holds regardless of which step failed.
+func runApply(cmd *cobra.Command, theme string) error {
+	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
+
+	if err := apply(out, theme); err != nil {
+		fmt.Fprintln(errOut, err)
+		return err
+	}
+	return nil
+}
+
+// apply runs the full theming pipeline for one theme: ensure the data
+// dir, load the flavor, run every recipe collecting errors, and on
+// success print the served-up line with the flavor's Name. Pre-recipe
+// failures (missing data dir, missing flavor) short-circuit and return;
+// per-recipe failures are aggregated via errors.Join so one app's
+// failure does not hide another's. The caller is responsible for
+// printing the returned error to stderr.
+func apply(out io.Writer, theme string) error {
+	dataDir, err := paths.EnsureDataDir()
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
+	flavorsDir, err := paths.FlavorsDir()
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
+	f, err := flavor.Load(flavorsDir, theme)
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
+	recipes := []recipe.Recipe{
+		ghostty.New(flavorsDir, dataDir),
+	}
+
+	var errs []error
+	for _, r := range recipes {
+		if err := r.Run(f); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	fmt.Fprintf(out, "☕︎ Served up %s\n", f.Name)
+	return nil
 }

@@ -6,12 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] `internal/recipe` defines the `Recipe` interface (`Run(f flavor.Flavor) error`)
-- [ ] `internal/recipe/ghostty` locates, reads, renders, and writes the Ghostty theme to `<data dir>/ghostty`
-- [ ] Ghostty reload runs `pgrep ghostty` → first pid → `kill -s USR2 <pid>` via `os/exec` (no `sh -c`)
-- [ ] Command construction extracted into a testable seam (returns `*exec.Cmd` without running)
-- [ ] `barista apply <theme>` ensures data dir, loads flavor, runs Ghostty, prints `☕︎ Served up <name>` on success
-- [ ] Aggregated-error collection loop (`[]error` + `errors.Join`) introduced, holding one recipe
-- [ ] Integration test writes a real template into a temp flavors dir and asserts the rendered output file
-- [ ] Reload tested via the command-construction seam (assert args, no process spawn)
-- [ ] `go build ./...`, `go test ./...`, `go vet ./...` pass
+- [x] `internal/recipe` defines the `Recipe` interface (`Run(f flavor.Flavor) error`)
+- [x] `internal/recipe/ghostty` locates, reads, renders, and writes the Ghostty theme to `<data dir>/ghostty`
+- [x] Ghostty reload runs `pgrep ghostty` → first pid → `kill -s USR2 <pid>` via `os/exec` (no `sh -c`)
+- [x] Command construction extracted into a testable seam (returns `*exec.Cmd` without running)
+- [x] `barista apply <theme>` ensures data dir, loads flavor, runs Ghostty, prints `☕︎ Served up <name>` on success
+- [x] Aggregated-error collection loop (`[]error` + `errors.Join`) introduced, holding one recipe
+- [x] Integration test writes a real template into a temp flavors dir and asserts the rendered output file
+- [x] Reload tested via the command-construction seam (assert args, no process spawn)
+- [x] `go build ./...`, `go test ./...`, `go vet ./...` pass
