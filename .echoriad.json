@@ -1,0 +1,12 @@
+{
+  "image": ".gondolin/assets",
+  "network": {
+    "allowedHosts": [
+      "github.com",
+      "*.github.com",
+      "*.githubusercontent.com",
+      "proxy.golang.org",
+      "sum.golang.org"
+    ]
+  }
+}
