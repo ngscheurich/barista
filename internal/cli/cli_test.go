@@ -38,10 +38,6 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	gotZellij, err := os.ReadFile(filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
 	require.NoError(t, err)
 	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
-
-	gotFzf, err := os.ReadFile(filepath.Join(configDir, "barista", "fzfrc"))
-	require.NoError(t, err)
-	assert.Equal(t, "# Catppuccin Mocha\n", string(gotFzf))
 }
 
 // apply prints the flavor's Name, not the dirname.
@@ -135,10 +131,10 @@ func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
 	got := errOut.String()
 	flavorsDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
 
-	// fzf: template locate/read, render, file write.
-	assert.Contains(t, got, filepath.Join(flavorsDir, "fzf.rc.mustache"))
-	assert.Contains(t, got, "FZF_DEFAULT_OPTS_FILE is set")
-	assert.Contains(t, got, "writing new file")
+	// fzf: template read, render, env var read, merge, fish.
+	assert.Contains(t, got, filepath.Join(flavorsDir, "fzf.mustache"))
+	assert.Contains(t, got, "Read existing env var")
+	assert.Contains(t, got, "Setting env var via fish")
 
 	// Ghostty: template read, theme write, reload (pgrep no-op in tests).
 	assert.Contains(t, got, filepath.Join(flavorsDir, "ghostty.mustache"))
@@ -202,7 +198,7 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 	assert.Contains(t, got, "Rendering template")
 	assert.Contains(t, got, "Writing theme")
 	assert.Contains(t, got, "Template not found; skipping")
-	assert.NotContains(t, got, "writing new file")
+	assert.NotContains(t, got, "Setting env var via fish")
 	// Neovim skipped: no render line.
 	assert.NotContains(t, got, "Creating plugin directory")
 	// Zellij skipped: no config touch line.

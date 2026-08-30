@@ -77,11 +77,6 @@ func apply(out io.Writer, theme string) error {
 		return fmt.Errorf("apply %s: %w", theme, err)
 	}
 
-	fzfOut, err := fzf.OutputFilePath()
-	if err != nil {
-		return fmt.Errorf("apply %s: %w", theme, err)
-	}
-
 	f, err := flavor.Load(flavorsDir, theme)
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", theme, err)
@@ -94,7 +89,7 @@ func apply(out io.Writer, theme string) error {
 		name string
 		r    recipe.Recipe
 	}{
-		{name: "fzf", r: fzf.New(flavorsDir, fzfOut)},
+		{name: "fzf", r: fzf.New(flavorsDir)},
 		{name: "Ghostty", r: ghostty.New(flavorsDir, dataDir)},
 		{name: "Neovim", r: neovim.New(flavorsDir, dataDir)},
 		{name: "Zellij", r: zellij.New(flavorsDir, configDir)},
