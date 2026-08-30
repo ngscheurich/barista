@@ -121,3 +121,90 @@ func TestRootNoArgsPrintsHelp(t *testing.T) {
 	assert.Contains(t, out.String(), "Usage:",
 		"root with no args should print help with a Usage block; got:\n%s", out.String())
 }
+
+// apply -v logs each recipe step to stderr, including the input files
+// read, output files written, and reload actions performed.
+func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
+	configDir, dataDir := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+
+	root, _, errOut := newRoot([]string{"apply", "-v", "catppuccin-mocha"})
+
+	require.NoError(t, root.Execute())
+
+	got := errOut.String()
+	flavorsDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
+
+	// fzf: template locate/read, render, file write.
+	assert.Contains(t, got, filepath.Join(flavorsDir, "fzf.rc.mustache"))
+	assert.Contains(t, got, "FZF_DEFAULT_OPTS_FILE is set")
+	assert.Contains(t, got, "writing new file")
+
+	// Ghostty: template read, theme write, reload (pgrep no-op in tests).
+	assert.Contains(t, got, filepath.Join(flavorsDir, "ghostty.mustache"))
+	assert.Contains(t, got, filepath.Join(dataDir, "barista", "ghostty"))
+	assert.Contains(t, got, "Discovering ghostty pid")
+	assert.Contains(t, got, "reload skipped")
+
+	// Neovim: template read, dir create, theme write, reload.
+	assert.Contains(t, got, filepath.Join(flavorsDir, "neovim.lua.mustache"))
+	assert.Contains(t, got, filepath.Join(dataDir, "barista", "nvim", "lua", "flavor.lua"))
+	assert.Contains(t, got, "Scanning neovim runtime directory")
+
+	// Zellij: template read, dir create, theme write, config touch.
+	assert.Contains(t, got, filepath.Join(flavorsDir, "zellij.kdl.mustache"))
+	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
+	assert.Contains(t, got, "Touching config file")
+	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "config.kdl"))
+}
+
+// apply --verbose works as the long form of -v.
+func TestApplyVerboseLongFlagWorks(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+
+	root, _, errOut := newRoot([]string{"apply", "--verbose", "catppuccin-mocha"})
+
+	require.NoError(t, root.Execute())
+	assert.Contains(t, errOut.String(), "Reading template")
+	assert.Contains(t, errOut.String(), "Writing theme")
+}
+
+// apply without -v emits no per-step logs to stderr.
+func TestApplyNonVerboseOmitsLogs(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+
+	root, _, errOut := newRoot([]string{"apply", "catppuccin-mocha"})
+
+	require.NoError(t, root.Execute())
+	assert.NotContains(t, errOut.String(), "Reading template")
+	assert.NotContains(t, errOut.String(), "Writing theme")
+}
+
+// apply -v logs steps only for applied apps; skipped apps log the
+// template search and skip, but no render/write/reload lines.
+func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	// Only the Ghostty template is present; fzf, Neovim, and Zellij are
+	// skipped and should log the locate + skip but no render/write lines.
+	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
+	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
+
+	root, _, errOut := newRoot([]string{"apply", "-v", "catppuccin-mocha"})
+
+	require.NoError(t, root.Execute())
+	got := errOut.String()
+
+	// Ghostty applied: its render/write lines are present.
+	assert.Contains(t, got, "Rendering template")
+	assert.Contains(t, got, "Writing theme")
+	assert.Contains(t, got, "Template not found; skipping")
+	assert.NotContains(t, got, "writing new file")
+	// Neovim skipped: no render line.
+	assert.NotContains(t, got, "Creating plugin directory")
+	// Zellij skipped: no config touch line.
+	assert.NotContains(t, got, "Touching config file")
+}

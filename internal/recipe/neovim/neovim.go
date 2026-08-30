@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/charmbracelet/log"
+
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/nvim"
 	"github.com/ngscheurich/barista/internal/recipe"
@@ -48,29 +50,36 @@ func New(flavorsDir, dataDir string) *Recipe {
 // orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+	log.Info("Locating template", "app", "neovim", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			log.Info("Template not found; skipping", "app", "neovim")
 			return fmt.Errorf("neovim: %w", recipe.ErrNotApplicable)
 		}
 		return fmt.Errorf("neovim: read template %s: %w", tmplPath, err)
 	}
+	log.Info("Reading template", "app", "neovim", "path", tmplPath)
 
+	log.Info("Rendering template", "app", "neovim")
 	rendered, err := template.Render(string(raw), f)
 	if err != nil {
 		return fmt.Errorf("neovim: %w", err)
 	}
 
 	outDir := filepath.Join(r.dataDir, pluginDir)
+	log.Info("Creating plugin directory", "app", "neovim", "path", outDir)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("neovim: create plugin dir %s: %w", outDir, err)
 	}
 
 	outPath := filepath.Join(outDir, outputName)
+	log.Info("Writing theme", "app", "neovim", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
 		return fmt.Errorf("neovim: write theme %s: %w", outPath, err)
 	}
 
+	log.Info("Reloading neovim instances", "app", "neovim")
 	if err := nvim.Reload(); err != nil {
 		return fmt.Errorf("neovim: reload: %w", err)
 	}

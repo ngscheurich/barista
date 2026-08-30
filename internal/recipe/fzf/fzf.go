@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/log"
+
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
@@ -32,13 +34,17 @@ const templateName = "fzf.rc.mustache"
 // home fallback.
 func OutputFilePath() (string, error) {
 	if p := os.Getenv("FZF_DEFAULT_OPTS_FILE"); p != "" {
+		log.Info("FZF_DEFAULT_OPTS_FILE is set", "path", p)
 		return p, nil
 	}
+	log.Info("FZF_DEFAULT_OPTS_FILE is unset; falling back to $HOME/.fzfrc")
 	home := os.Getenv("HOME")
 	if home == "" {
 		return "", fmt.Errorf("fzf: resolve output file: %w", errNoOutputPath)
 	}
-	return filepath.Join(home, ".fzfrc"), nil
+	path := filepath.Join(home, ".fzfrc")
+	log.Info("Resolved output file", "path", path)
+	return path, nil
 }
 
 // errNoOutputPath is returned when neither FZF_DEFAULT_OPTS_FILE nor HOME
@@ -68,14 +74,18 @@ func New(flavorsDir, outputFile string) *Recipe {
 // orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+	log.Info("Locating template", "app", "fzf", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			log.Info("Template not found; skipping", "app", "fzf")
 			return fmt.Errorf("fzf: %w", recipe.ErrNotApplicable)
 		}
 		return fmt.Errorf("fzf: read template %s: %w", tmplPath, err)
 	}
+	log.Info("Reading template", "app", "fzf", "path", tmplPath)
 
+	log.Info("Rendering template", "app", "fzf")
 	rendered, err := template.Render(string(raw), f)
 	if err != nil {
 		return fmt.Errorf("fzf: %w", err)
@@ -85,6 +95,7 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 	existing, err := os.ReadFile(r.outputFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			log.Info("Output file does not exist; writing new file", "app", "fzf", "path", r.outputFile)
 			if err := os.WriteFile(r.outputFile, []byte(rendered), 0o644); err != nil {
 				return fmt.Errorf("fzf: write %s: %w", r.outputFile, err)
 			}
@@ -93,6 +104,7 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 		return fmt.Errorf("fzf: read %s: %w", r.outputFile, err)
 	}
 
+	log.Info("Appending to existing file", "app", "fzf", "path", r.outputFile)
 	content := ensureTrailingNewline(string(existing)) + "\n" + rendered
 	if err := os.WriteFile(r.outputFile, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("fzf: write %s: %w", r.outputFile, err)

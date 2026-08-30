@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 
 	"github.com/ngscheurich/barista/internal/flavor"
@@ -17,14 +18,18 @@ import (
 )
 
 func newApplyCmd() *cobra.Command {
-	return &cobra.Command{
+	var verbose bool
+	cmd := &cobra.Command{
 		Use:   "apply <theme>",
 		Short: "Apply a flavor to all configured applications",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runApply(cmd, args[0])
+			return runApply(cmd, args[0], verbose)
 		},
 	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false,
+		"log each step the recipes perform, including files read and written")
+	return cmd
 }
 
 // runApply is the apply command's body, split out so a test can call it
@@ -32,7 +37,13 @@ func newApplyCmd() *cobra.Command {
 // through the cobra tree. The returned error is surfaced to the caller
 // (cobra, then main), which is responsible for printing it to stderr;
 // the root command sets SilenceErrors so cobra does not print it itself.
-func runApply(cmd *cobra.Command, theme string) error {
+func runApply(cmd *cobra.Command, theme string, verbose bool) error {
+	level := log.WarnLevel
+	if verbose {
+		level = log.InfoLevel
+	}
+	log.SetOutput(cmd.ErrOrStderr())
+	log.SetLevel(level)
 	return apply(cmd.OutOrStdout(), theme)
 }
 
@@ -45,6 +56,11 @@ func runApply(cmd *cobra.Command, theme string) error {
 // error is aggregated via errors.Join so one app's failure does not hide
 // another's. The served-up list always names every configured app; the
 // caller is responsible for printing the returned error to stderr.
+//
+// Per-step logs (template reads, theme writes, reload actions) are emitted
+// by each recipe via the package-level charmbracelet/log default logger,
+// whose level and output are configured by runApply from the --verbose
+// flag.
 func apply(out io.Writer, theme string) error {
 	dataDir, err := paths.EnsureDataDir()
 	if err != nil {

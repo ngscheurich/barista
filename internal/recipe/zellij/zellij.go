@@ -16,6 +16,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/charmbracelet/log"
+
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
@@ -64,30 +66,37 @@ func New(flavorsDir, configDir string) *Recipe {
 // role prefix; the orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+	log.Info("Locating template", "app", "zellij", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			log.Info("Template not found; skipping", "app", "zellij")
 			return fmt.Errorf("zellij: %w", recipe.ErrNotApplicable)
 		}
 		return fmt.Errorf("zellij: read template %s: %w", tmplPath, err)
 	}
+	log.Info("Reading template", "app", "zellij", "path", tmplPath)
 
+	log.Info("Rendering template", "app", "zellij")
 	rendered, err := template.Render(string(raw), f)
 	if err != nil {
 		return fmt.Errorf("zellij: %w", err)
 	}
 
 	outDir := filepath.Join(r.configDir, themesDir)
+	log.Info("Creating themes directory", "app", "zellij", "path", outDir)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("zellij: create themes dir %s: %w", outDir, err)
 	}
 
 	outPath := filepath.Join(outDir, outputName)
+	log.Info("Writing theme", "app", "zellij", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
 		return fmt.Errorf("zellij: write theme %s: %w", outPath, err)
 	}
 
 	cfgPath := filepath.Join(r.configDir, configFile)
+	log.Info("Touching config file for reload", "app", "zellij", "path", cfgPath)
 	if err := Touch(cfgPath).Run(); err != nil {
 		return fmt.Errorf("zellij: touch %s: %w", cfgPath, err)
 	}

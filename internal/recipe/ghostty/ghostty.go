@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/log"
+
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
@@ -58,20 +60,25 @@ func New(flavorsDir, dataDir string) *Recipe {
 // role prefix; the orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(f flavor.Flavor) error {
 	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+	log.Info("Locating template", "app", "ghostty", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			log.Info("Template not found; skipping", "app", "ghostty")
 			return fmt.Errorf("ghostty: %w", recipe.ErrNotApplicable)
 		}
 		return fmt.Errorf("ghostty: read template %s: %w", tmplPath, err)
 	}
+	log.Info("Reading template", "app", "ghostty", "path", tmplPath)
 
+	log.Info("Rendering template", "app", "ghostty")
 	rendered, err := template.Render(string(raw), f)
 	if err != nil {
 		return fmt.Errorf("ghostty: %w", err)
 	}
 
 	outPath := filepath.Join(r.dataDir, outputName)
+	log.Info("Writing theme", "app", "ghostty", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
 		return fmt.Errorf("ghostty: write theme %s: %w", outPath, err)
 	}
@@ -86,16 +93,20 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 // missing pgrep result (Ghostty not running) is treated as a no-op so
 // applying a theme without the app open does not fail the run.
 func reload() error {
+	log.Info("Discovering ghostty pid via pgrep", "app", "ghostty")
 	out, err := Pgrep().Output()
 	if err != nil {
 		// pgrep exits non-zero when no process matches; treat as not
 		// running rather than aborting the recipe.
+		log.Info("No ghostty process running; reload skipped", "app", "ghostty")
 		return nil
 	}
 	pid := firstNonEmptyLine(string(out))
 	if pid == "" {
+		log.Info("No ghostty process running; reload skipped", "app", "ghostty")
 		return nil
 	}
+	log.Info("Sending SIGUSR2 to ghostty", "app", "ghostty", "pid", pid)
 	if err := Kill(pid).Run(); err != nil {
 		return fmt.Errorf("kill -s USR2 %s: %w", pid, err)
 	}

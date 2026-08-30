@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/charmbracelet/log"
 )
 
 // DiscoverSockets walks the Neovim runtime directory for server sockets,
@@ -24,6 +26,7 @@ import (
 // can treat "Neovim is not running" as a no-op reload.
 func DiscoverSockets() ([]string, error) {
 	dir := resolveRuntimeDir()
+	log.Info("Scanning neovim runtime directory", "dir", dir)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -43,6 +46,7 @@ func DiscoverSockets() ([]string, error) {
 		}
 		sockets = append(sockets, filepath.Join(dir, name))
 	}
+	log.Info("Discovered neovim sockets", "count", len(sockets))
 	return sockets, nil
 }
 
@@ -70,6 +74,7 @@ func Reload() error {
 
 	var errs []error
 	for _, s := range sockets {
+		log.Info("Sending reload keystroke to neovim socket", "socket", s)
 		if err := RemoteSend(s, reloadKeys).Run(); err != nil {
 			errs = append(errs, fmt.Errorf("nvim --server %s: %w", s, err))
 		}
