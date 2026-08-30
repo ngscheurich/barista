@@ -12,26 +12,30 @@ import (
 )
 
 // DiscoverSockets returns only the entries whose names match the
-// nvim.*.0 contract, ignoring non-matching files and directories.
+// nvim.*.0 contract one subdirectory level deep, ignoring non-matching
+// files and directories.
 func TestDiscoverSocketsReturnsOnlyMatchingEntries(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_RUNTIME_DIR", dir)
 
+	subdir := filepath.Join(dir, "session")
+	require.NoError(t, os.MkdirAll(subdir, 0o755))
+
 	// Matching sockets.
-	mustWrite(t, filepath.Join(dir, "nvim.123.0"))
-	mustWrite(t, filepath.Join(dir, "nvim.456.0"))
+	mustWrite(t, filepath.Join(subdir, "nvim.123.0"))
+	mustWrite(t, filepath.Join(subdir, "nvim.456.0"))
 	// Non-matching: wrong prefix, wrong suffix, a directory, a log file.
-	mustWrite(t, filepath.Join(dir, "other.0"))
-	mustWrite(t, filepath.Join(dir, "nvim.789.log"))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "nvim.dir.0"), 0o755))
-	mustWrite(t, filepath.Join(dir, "README"))
+	mustWrite(t, filepath.Join(subdir, "other.0"))
+	mustWrite(t, filepath.Join(subdir, "nvim.789.log"))
+	require.NoError(t, os.Mkdir(filepath.Join(subdir, "nvim.dir.0"), 0o755))
+	mustWrite(t, filepath.Join(subdir, "README"))
 
 	got, err := nvim.DiscoverSockets()
 
 	require.NoError(t, err)
 	want := []string{
-		filepath.Join(dir, "nvim.123.0"),
-		filepath.Join(dir, "nvim.456.0"),
+		filepath.Join(subdir, "nvim.123.0"),
+		filepath.Join(subdir, "nvim.456.0"),
 	}
 	assert.ElementsMatch(t, want, got)
 }
@@ -49,7 +53,7 @@ func TestDiscoverSocketsMissingDirReturnsEmpty(t *testing.T) {
 }
 
 // When XDG_RUNTIME_DIR is unset, the fallback path $TMPDIR/nvim.<user>
-// is walked.
+// is walked, one subdirectory level deep.
 func TestDiscoverSocketsFallsBackWhenXDGUnset(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_RUNTIME_DIR", "")
@@ -57,13 +61,14 @@ func TestDiscoverSocketsFallsBackWhenXDGUnset(t *testing.T) {
 	t.Setenv("USER", "tester")
 
 	fallback := filepath.Join(tmp, "nvim.tester")
-	require.NoError(t, os.MkdirAll(fallback, 0o755))
-	mustWrite(t, filepath.Join(fallback, "nvim.999.0"))
+	session := filepath.Join(fallback, "session")
+	require.NoError(t, os.MkdirAll(session, 0o755))
+	mustWrite(t, filepath.Join(session, "nvim.999.0"))
 
 	got, err := nvim.DiscoverSockets()
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{filepath.Join(fallback, "nvim.999.0")}, got)
+	assert.Equal(t, []string{filepath.Join(session, "nvim.999.0")}, got)
 }
 
 // RemoteSend builds nvim --server <socket> --remote-send <keys>, calling

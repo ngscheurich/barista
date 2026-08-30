@@ -14,37 +14,34 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/charmbracelet/log"
 )
 
-// DiscoverSockets walks the Neovim runtime directory for server sockets,
-// returning the paths of every entry named nvim.*.0. It tries
-// $XDG_RUNTIME_DIR first, then falls back to $TMPDIR/nvim.<user>. A
-// missing directory yields no sockets rather than an error, so a recipe
-// can treat "Neovim is not running" as a no-op reload.
+// DiscoverSockets discovers running Neovim server sockets, returning the
+// paths of every entry matching nvim.*.0 one subdirectory level deep
+// under the runtime directory (e.g. $XDG_RUNTIME_DIR/*/nvim.*.0). It
+// tries $XDG_RUNTIME_DIR first, then falls back to $TMPDIR/nvim.<user>.
+// A missing directory yields no sockets rather than an error, so a
+// recipe can treat "Neovim is not running" as a no-op reload.
 func DiscoverSockets() ([]string, error) {
 	dir := resolveRuntimeDir()
 	log.Info("Scanning neovim runtime directory", "dir", dir)
-	entries, err := os.ReadDir(dir)
+
+	pattern := filepath.Join(dir, "*", "nvim.*.0")
+	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("read nvim runtime dir %s: %w", dir, err)
+		return nil, fmt.Errorf("glob %s: %w", pattern, err)
 	}
 
+	// Filter out any directory entries that matched the glob.
 	var sockets []string
-	for _, e := range entries {
-		name := e.Name()
-		if !strings.HasPrefix(name, "nvim.") || !strings.HasSuffix(name, ".0") {
+	for _, m := range matches {
+		info, err := os.Lstat(m)
+		if err != nil || info.IsDir() {
 			continue
 		}
-		if e.IsDir() {
-			continue
-		}
-		sockets = append(sockets, filepath.Join(dir, name))
+		sockets = append(sockets, m)
 	}
 	log.Info("Discovered neovim sockets", "count", len(sockets))
 	return sockets, nil
