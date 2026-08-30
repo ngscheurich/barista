@@ -52,6 +52,23 @@ func TestApplyUsesNameNotDirname(t *testing.T) {
 	assert.NotContains(t, out.String(), "catppuccin-mocha")
 }
 
+// apply respects a custom icon from config.toml.
+func TestApplyCustomIcon(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+	require.NoError(t, os.WriteFile(
+		filepath.Join(configDir, "barista", "config.toml"),
+		[]byte("icon = \"🍵\""),
+		0o644,
+	))
+
+	root, out, _ := newRoot([]string{"apply", "catppuccin-mocha"})
+
+	require.NoError(t, root.Execute())
+	assert.Contains(t, out.String(), "🍵 Served up")
+	assert.NotContains(t, out.String(), "☕ Served up")
+}
+
 // A flavor that carries only some templates: the apps with templates
 // apply (☑); the apps without templates are skipped (☐), not errors, and
 // the run exits zero. The served-up list always names every configured app.

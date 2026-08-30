@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 
+	"github.com/ngscheurich/barista/internal/config"
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/paths"
 	"github.com/ngscheurich/barista/internal/recipe"
@@ -82,6 +83,11 @@ func apply(out io.Writer, theme string) error {
 		return fmt.Errorf("apply %s: %w", theme, err)
 	}
 
+	cfg, err := config.Load(configDir)
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", theme, err)
+	}
+
 	// apps pairs each recipe with the display name printed in the
 	// served-up list. Order is alphabetical by name, which governs the
 	// row order in the output.
@@ -95,7 +101,7 @@ func apply(out io.Writer, theme string) error {
 		{name: "Zellij", r: zellij.New(flavorsDir, configDir)},
 	}
 
-	fmt.Fprintf(out, "☕ Served up %s to:\n\n", f.Name)
+	fmt.Fprintf(out, "%s Served up %s to:\n\n", cfg.Icon, f.Name)
 	var errs []error
 	for _, a := range apps {
 		err := a.r.Run(f)
