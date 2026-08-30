@@ -9,11 +9,13 @@
 package nvim
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 
 	"github.com/charmbracelet/log"
 )
@@ -59,27 +61,47 @@ func RemoteSend(socket, keys string) *exec.Cmd {
 // nvim_send.sh argument.
 const reloadKeys = "<Cmd>lua require('barista')<CR>"
 
+// processAlive returns true when pid is a running process.
+// Uses syscall.Kill(pid, 0) which probes without delivering a signal.
+func processAlive(pid int) bool {
+	return syscall.Kill(pid, 0) == nil
+}
+
 // Reload sends the reload keystroke to every discovered Neovim socket.
-// Errors from individual sockets are collected and joined so one dead
-// socket does not hide a failure on another; an empty socket list is a
-// no-op.
+// Stale sockets (whose PID is no longer alive) are skipped rather than
+// treated as failures; an empty socket list is a no-op.
 func Reload() error {
 	sockets, err := DiscoverSockets()
 	if err != nil {
 		return fmt.Errorf("discover sockets: %w", err)
 	}
 
-	var errs []error
 	for _, s := range sockets {
 		log.Info("Sending reload keystroke to neovim socket", "socket", s)
 		if err := RemoteSend(s, reloadKeys).Run(); err != nil {
-			errs = append(errs, fmt.Errorf("nvim --server %s: %w", s, err))
+			if pid := extractPID(s); pid > 0 && !processAlive(pid) {
+				log.Info("Skipping stale neovim socket", "socket", s, "pid", pid)
+				continue
+			}
+			return fmt.Errorf("reload neovim: nvim --server %s: %w", s, err)
 		}
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("reload neovim: %w", errors.Join(errs...))
-	}
 	return nil
+}
+
+// extractPID parses the PID from a socket path like
+// ".../nvim.25015.0", returning -1 when the filename doesn't match.
+func extractPID(path string) int {
+	base := filepath.Base(path)
+	if !strings.HasPrefix(base, "nvim.") || !strings.HasSuffix(base, ".0") {
+		return -1
+	}
+	pidStr := strings.TrimSuffix(strings.TrimPrefix(base, "nvim."), ".0")
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return -1
+	}
+	return pid
 }
 
 // resolveRuntimeDir picks the directory to scan for Neovim sockets:
