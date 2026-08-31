@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
@@ -40,8 +40,9 @@ const colorFlag = "--color"
 // universal export. The merged value is wrapped in single quotes so fish
 // treats it as a literal string, preserving any double quotes and inner
 // spaces in option values. Single quotes inside the value are escaped
-// fish-style with '\''. It returns the command without running it, so
-// tests can assert the args and integration code can swap in a fake.
+// fish-style, each becoming a backslash-escaped quote. It returns the
+// command without running it, so tests can assert the args and
+// integration code can swap in a fake.
 var Fish = func(merged string) *exec.Cmd {
 	escaped := strings.ReplaceAll(merged, "'", "'\\''")
 	return exec.Command("fish", "-c", "set -Ux "+envVar+" '"+escaped+"'")

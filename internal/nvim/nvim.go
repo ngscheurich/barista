@@ -17,7 +17,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 )
 
 // DiscoverSockets discovers running Neovim server sockets, returning the
