@@ -11,7 +11,7 @@ import (
 
 // apply <theme> with a real flavor and every template writes each
 // recipe's output file and prints the served-up block: a header with the
-// flavor's Name followed by a ☑ row per app that applied.
+// flavor's Name followed by a ✓ row per app that applied.
 func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	writeFlavor(t, configDir, "catppuccin-mocha")
@@ -21,10 +21,10 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	want := "☕ Served up Catppuccin Mocha to:\n\n" +
-		"  ☑ fzf\n" +
-		"  ☑ Ghostty\n" +
-		"  ☑ Neovim\n" +
-		"  ☑ Zellij\n\n"
+		"  ✓ fzf\n" +
+		"  ✓ Ghostty\n" +
+		"  ✓ Neovim\n" +
+		"  ✓ Zellij\n\n"
 	assert.Equal(t, want, out.String())
 
 	gotGhostty, err := os.ReadFile(filepath.Join(dataDir, "barista", "ghostty"))
@@ -70,12 +70,12 @@ func TestApplyCustomIcon(t *testing.T) {
 }
 
 // A flavor that carries only some templates: the apps with templates
-// apply (☑); the apps without templates are skipped (☐), not errors, and
+// apply (✓); the apps without templates are skipped (•), not errors, and
 // the run exits zero. The served-up list always names every configured app.
 func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	// Write the flavor with only the Ghostty template; fzf, Neovim, and
-	// Zellij templates are absent, so those recipes are skipped (☐).
+	// Zellij templates are absent, so those recipes are skipped (•).
 	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
 	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
@@ -86,10 +86,10 @@ func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	err := root.Execute()
 	require.NoError(t, err)
 
-	assert.Contains(t, out.String(), "  ☐ fzf\n")
-	assert.Contains(t, out.String(), "  ☑ Ghostty\n")
-	assert.Contains(t, out.String(), "  ☐ Neovim\n")
-	assert.Contains(t, out.String(), "  ☐ Zellij\n")
+	assert.Contains(t, out.String(), "  • fzf\n")
+	assert.Contains(t, out.String(), "  ✓ Ghostty\n")
+	assert.Contains(t, out.String(), "  • Neovim\n")
+	assert.Contains(t, out.String(), "  • Zellij\n")
 
 	// Ghostty still wrote its theme.
 	assert.FileExists(t, filepath.Join(dataDir, "barista", "ghostty"))
