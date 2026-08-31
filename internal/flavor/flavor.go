@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -91,6 +93,34 @@ func (p Palette) AsMap() map[string]string {
 		"mantle":    p.Mantle,
 		"crust":     p.Crust,
 	}
+}
+
+// List enumerates the flavors directory, returning every Flavor that loads,
+// sorted by Name. Entries that are not flavors (plain files, directories
+// without a flavor.toml) and flavors whose flavor.toml fails to load are
+// skipped: they are not available, and `apply <dirname>` reports their
+// errors when invoked directly. A flavors directory that cannot be read is
+// an error.
+func List(flavorsDir string) ([]Flavor, error) {
+	entries, err := os.ReadDir(flavorsDir)
+	if err != nil {
+		return nil, fmt.Errorf("list flavors %s: %w", flavorsDir, err)
+	}
+	var flavors []Flavor
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		f, err := Load(flavorsDir, e.Name())
+		if err != nil {
+			continue
+		}
+		flavors = append(flavors, f)
+	}
+	slices.SortFunc(flavors, func(a, b Flavor) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return flavors, nil
 }
 
 // Load reads and parses the flavor named dirname from the flavors directory,

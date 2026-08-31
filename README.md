@@ -88,6 +88,13 @@ cursor-color = #f5e0dc
 Running `barista apply catppuccin-mocha` renders each template against the
 flavor and writes the result to the application's theme location.
 
+Running `barista apply` with no argument opens an interactive picker of
+your available flavors. The picker needs a terminal; when its input is
+not a terminal (in a script or a pipe) the command fails with a plain
+list of the available flavors instead. Set `BARISTA_ACCESSIBLE=1` to run
+the picker in accessible mode: plain numbered prompts instead of a TUI,
+which is what screen readers need and also works over a pipe.
+
 # Recipes
 
 A recipe tells Barista how to:

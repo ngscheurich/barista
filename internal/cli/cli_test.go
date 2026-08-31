@@ -3,13 +3,14 @@ package cli_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// apply <theme> with a real flavor and every template writes each
+// apply <flavor> with a real flavor and every template writes each
 // recipe's output file and prints the served-up block: a header with the
 // flavor's Name followed by a ✓ row per app that applied.
 func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
@@ -113,18 +114,11 @@ func TestApplyRejectsExtraArgs(t *testing.T) {
 	assert.Error(t, root.Execute())
 }
 
-// apply requires exactly one positional arg.
-func TestApplyRequiresArg(t *testing.T) {
-	root, _, _ := newRoot([]string{"apply"})
-
-	assert.Error(t, root.Execute())
-}
-
 func TestRootHelpHasShortDescription(t *testing.T) {
 	root, out, _ := newRoot([]string{"--help"})
 
 	assert.NoError(t, root.Execute())
-	assert.Contains(t, out.String(), "Serves up a new <theme> for your terminal apps.")
+	assert.Contains(t, out.String(), "Serves up a new flavor for your terminal apps.")
 }
 
 func TestRootNoArgsPrintsHelp(t *testing.T) {
@@ -220,4 +214,74 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 	assert.NotContains(t, got, "Creating plugin directory")
 	// Zellij skipped: no config touch line.
 	assert.NotContains(t, got, "Touching config file")
+}
+
+// apply with no argument and a non-terminal stdin fails with a plain
+// list of the available flavors' dirnames — the scripted and
+// screen-reader surface — instead of opening a picker it cannot run.
+// The dirnames are what the user would type to retry.
+func TestApplyNoArgNonTerminalListsFlavors(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeFlavor(t, configDir, "catppuccin-latte")
+
+	root, _, _ := newRoot([]string{"apply"})
+
+	err := root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no flavor given")
+	assert.Contains(t, err.Error(), "catppuccin-mocha")
+	assert.Contains(t, err.Error(), "catppuccin-latte")
+}
+
+// apply with no argument and BARISTA_ACCESSIBLE set runs the picker in
+// accessible mode against stdin, so piping a choice applies that flavor
+// end-to-end through every recipe.
+func TestApplyNoArgAccessibleAppliesChoice(t *testing.T) {
+	configDir, dataDir := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+	t.Setenv("BARISTA_ACCESSIBLE", "1")
+
+	root, out, _ := newRoot([]string{"apply"})
+	root.SetIn(strings.NewReader("1\n"))
+
+	require.NoError(t, root.Execute())
+	assert.Contains(t, out.String(), "Served up Catppuccin Mocha")
+
+	gotGhostty, err := os.ReadFile(filepath.Join(dataDir, "barista", "ghostty"))
+	require.NoError(t, err)
+	assert.Equal(t, "name = Catppuccin Mocha\nbase = #1e1e2e", string(gotGhostty))
+}
+
+// apply with no argument and no flavors installed fails before any
+// picker opens, naming the directory where flavors would live.
+func TestApplyNoArgNoFlavors(t *testing.T) {
+	useTempDirs(t)
+
+	root, _, _ := newRoot([]string{"apply"})
+
+	err := root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no flavors found")
+}
+
+// Two flavors sharing a Name (writeFlavor's TOML has a fixed name) get
+// their dirnames as picker labels, so the rows stay distinguishable;
+// piping the row number still applies the right flavor.
+func TestApplyNoArgAccessibleDisambiguatesSharedNames(t *testing.T) {
+	configDir, _ := useTempDirs(t)
+	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeFlavor(t, configDir, "catppuccin-latte")
+	t.Setenv("BARISTA_ACCESSIBLE", "1")
+
+	root, out, _ := newRoot([]string{"apply"})
+	root.SetIn(strings.NewReader("2\n"))
+
+	require.NoError(t, root.Execute())
+	assert.Contains(t, out.String(), "1. catppuccin-latte")
+	assert.Contains(t, out.String(), "2. catppuccin-mocha")
+
+	gotZellij, err := os.ReadFile(filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
+	require.NoError(t, err)
+	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
 }

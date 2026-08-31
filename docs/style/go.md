@@ -55,7 +55,7 @@ Common commands:
 | --- | --- |
 | Build | `go build ./...` |
 | Build the CLI binary | `go build -o bin/barista ./cmd/barista` |
-| Run | `go run ./cmd/barista apply <theme>` |
+| Run | `go run ./cmd/barista apply <flavor>` |
 | Test | `go test ./...` |
 | Test with race detector | `go test -race ./...` |
 | Format | `gofmt -w .` or `goimports -w .` |
@@ -579,7 +579,7 @@ Barista uses [cobra](https://github.comgithub.com/spf13/cobra), which underpins 
 func NewRoot() *cobra.Command {
     cmd := &cobra.Command{
         Use:           "barista",
-        Short:         "Serves up a new <theme> for your terminal apps.",
+        Short:         "Serves up a new flavor for your terminal apps.",
         SilenceUsage:  true,  // don't print usage on RunE error
         SilenceErrors: true,  // we print errors ourselves
     }
@@ -595,7 +595,7 @@ The `apply` command:
 
 func newApplyCmd() *cobra.Command {
     return &cobra.Command{
-        Use:   "apply <theme>",
+        Use:   "apply <flavor>",
         Short: "Apply a flavor to all configured applications",
         Args:  cobra.ExactArgs(1),
         RunE: func(cmd *cobra.Command, args []string) error {
@@ -776,7 +776,7 @@ These are the locally-decided defaults. Override only with a comment justifying 
 2. **`goimports` (not just `gofmt`) on save.** Three import blocks, alphabetised within each.
 3. **Package names are singular, lowercase, no underscores.** No `util`, `common`, `helpers`.
 4. **MixedCaps everywhere, initialisms preserved.** `FlavorID`, `parseTOML`, never `FlavorId` or `Parse_toml`. TOML keys stay `snake_case`; the Go identifiers that wrap them are MixedCaps.
-5. **`cobra` for the CLI** (`barista apply <theme>`).
+5. **`cobra` for the CLI** (`barista apply <flavor>`).
 6. **Functional options** for constructors with more than two optional arguments; small `Config` struct otherwise.
 7. **Errors wrapped with `%w`** at every layer boundary. Wrap with a one-phrase prefix identifying *this* layer's role (`fmt.Errorf("read flavor %s: %w", dirname, err)`).
 8. **Sentinel errors for categorical failures, typed errors for structured detail.** Start with sentinels; promote to typed only when a caller needs fields.
@@ -787,7 +787,7 @@ These are the locally-decided defaults. Override only with a comment justifying 
 13. **Doc comments on every exported identifier.** Start with the identifier name. **No references to `docs/`** — compress the *why* inline, drop the citation.
 14. **No `init()`** outside `cmd/barista/main.go`. Hidden init is hidden control flow.
 15. **`go vet ./...` and `golangci-lint run` are CI gates.** Locally: pre-commit hooks run both.
-16. **Command nouns are singular; collections stay plural.** `barista apply <theme>` acts on one flavor; a directory listing many flavors is the plural `flavors`. A command invokes a verb on one noun; a collection holds many.
+16. **Command nouns are singular; collections stay plural.** `barista apply <flavor>` acts on one flavor; a directory listing many flavors is the plural `flavors`. A command invokes a verb on one noun; a collection holds many.
 
 ## 17. Open questions
 

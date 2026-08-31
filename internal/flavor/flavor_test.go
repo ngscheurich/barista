@@ -3,6 +3,7 @@ package flavor_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -191,3 +192,50 @@ func writeFlavor(t *testing.T, dirname, toml string) string {
 
 // A compile-time guard that the sentinel is an error value, not a type.
 var _ error = flavor.ErrNotFound
+
+// List enumerates the flavors directory: every subdirectory whose
+// flavor.toml loads becomes a Flavor, sorted by Name. Directories
+// without a flavor.toml, entries that fail to load, and plain files are
+// skipped; a missing flavors directory is an error.
+func TestList(t *testing.T) {
+	dir := t.TempDir()
+	writeFlavorTOML(t, dir, "catppuccin-mocha", validPaletteTOML)
+	latte := strings.Replace(validPaletteTOML, `"Catppuccin Mocha"`, `"Catppuccin Latte"`, 1)
+	writeFlavorTOML(t, dir, "catppuccin-latte", latte)
+
+	// A directory with no flavor.toml is not a flavor.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "not-a-flavor"), 0o755))
+	// A flavor.toml that fails to load is skipped, not fatal.
+	writeFlavorTOML(t, dir, "broken", "name = \"Broken\"\n")
+	// A plain file among the directories is ignored.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("hi"), 0o644))
+
+	flavors, err := flavor.List(dir)
+	require.NoError(t, err)
+	assert.Equal(t, []flavor.Flavor{
+		{Name: "Catppuccin Latte", Dirname: "catppuccin-latte", Palette: wantPalette()},
+		{Name: "Catppuccin Mocha", Dirname: "catppuccin-mocha", Palette: wantPalette()},
+	}, flavors)
+}
+
+// An empty flavors directory yields no flavors and no error.
+func TestListEmptyDir(t *testing.T) {
+	flavors, err := flavor.List(t.TempDir())
+	require.NoError(t, err)
+	assert.Empty(t, flavors)
+}
+
+// A flavors directory that cannot be read is an error.
+func TestListMissingDir(t *testing.T) {
+	_, err := flavor.List(filepath.Join(t.TempDir(), "nope"))
+	assert.Error(t, err)
+}
+
+// writeFlavorTOML creates <dir>/<dirname>/flavor.toml with the given
+// contents, making the parent directory first.
+func writeFlavorTOML(t *testing.T, dir, dirname, toml string) {
+	t.Helper()
+	d := filepath.Join(dir, dirname)
+	require.NoError(t, os.MkdirAll(d, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(d, "flavor.toml"), []byte(toml), 0o644))
+}
