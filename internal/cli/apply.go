@@ -149,7 +149,7 @@ func runApply(cmd *cobra.Command, dirname string, verbose bool) error {
 // another's. The served-up list always names every configured app; the
 // caller is responsible for printing the returned error to stderr.
 //
-// Per-step logs (template reads, output writes, reload actions) are
+// Per-step logs (template reads, artifact writes, reload actions) are
 // emitted by each recipe via the package-level charmbracelet/log default
 // logger, whose level and output are configured by runApply from the
 // --verbose flag.
@@ -160,6 +160,11 @@ func apply(out io.Writer, dirname string) error {
 	}
 
 	configDir, err := paths.ConfigDir()
+	if err != nil {
+		return fmt.Errorf("apply %s: %w", dirname, err)
+	}
+
+	zellijConfigDir, err := paths.ZellijConfigDir()
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", dirname, err)
 	}
@@ -189,7 +194,7 @@ func apply(out io.Writer, dirname string) error {
 		{name: "fzf", r: fzf.New(themesDir)},
 		{name: "Ghostty", r: ghostty.New(themesDir, dataDir)},
 		{name: "Neovim", r: neovim.New(themesDir, dataDir)},
-		{name: "Zellij", r: zellij.New(themesDir, configDir)},
+		{name: "Zellij", r: zellij.New(themesDir, zellijConfigDir)},
 	}
 
 	// Style rendering emits full ANSI; the colorprofile writer is the seam

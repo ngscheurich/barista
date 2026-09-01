@@ -27,17 +27,18 @@ import (
 // Zellij; the recipe looks for it under <themesDir>/<theme.Dirname>.
 const templateName = "zellij.kdl.mustache"
 
-// outputDir is the directory the rendered barista.kdl is written to,
-// under the user's config directory; it is created if missing. Zellij
-// reads theme files from this directory on reload.
-const outputDir = "zellij/themes"
+// artifactDir is the directory the rendered artifact is written to,
+// under the user's zellij config directory; it is created if missing.
+// Zellij reads theme files from this directory on reload.
+const artifactDir = "themes"
 
-// outputName is the file the rendered output is written to inside outputDir.
-const outputName = "barista.kdl"
+// artifactName is the file the rendered artifact is written to inside
+// artifactDir.
+const artifactName = "barista.kdl"
 
 // configFile is the Zellij main config file the recipe touches to trigger
-// a reload, under the user's config directory.
-const configFile = "zellij/config.kdl"
+// a reload, under the user's zellij config directory.
+const configFile = "config.kdl"
 
 // Touch constructs the touch command used to reload Zellij. It returns
 // the command without running it, so tests can assert the args without
@@ -47,7 +48,7 @@ var Touch = func(path string) *exec.Cmd {
 }
 
 // Recipe is the Zellij recipe: it carries the directories it resolves
-// templates and output from and runs the locate-render-write-reload
+// templates and artifacts from and runs the locate-render-write-reload
 // procedure against a Theme.
 type Recipe struct {
 	themesDir string
@@ -55,14 +56,14 @@ type Recipe struct {
 }
 
 // New builds a Zellij recipe that reads templates from themesDir and
-// writes output under configDir (Zellij looks for theme files under the
+// writes artifacts under configDir (Zellij looks for theme files under the
 // user config dir, not the data dir).
 func New(themesDir, configDir string) *Recipe {
 	return &Recipe{themesDir: themesDir, configDir: configDir}
 }
 
 // Run renders the Zellij template against t.Flavor, writes barista.kdl
-// under <configDir>/zellij/themes/, and touches <configDir>/zellij/config.kdl
+// under <configDir>/themes/, and touches <configDir>/config.kdl
 // to reload Zellij. A failure at any step is wrapped with this layer's
 // role prefix; the orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(t theme.Theme) error {
@@ -84,16 +85,16 @@ func (r *Recipe) Run(t theme.Theme) error {
 		return fmt.Errorf("zellij: %w", err)
 	}
 
-	outDir := filepath.Join(r.configDir, outputDir)
+	outDir := filepath.Join(r.configDir, artifactDir)
 	log.Info("Creating themes directory", "app", "zellij", "path", outDir)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("zellij: create themes dir %s: %w", outDir, err)
 	}
 
-	outPath := filepath.Join(outDir, outputName)
-	log.Info("Writing output", "app", "zellij", "path", outPath)
+	outPath := filepath.Join(outDir, artifactName)
+	log.Info("Writing artifact", "app", "zellij", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
-		return fmt.Errorf("zellij: write output %s: %w", outPath, err)
+		return fmt.Errorf("zellij: write artifact %s: %w", outPath, err)
 	}
 
 	cfgPath := filepath.Join(r.configDir, configFile)

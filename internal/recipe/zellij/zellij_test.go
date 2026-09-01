@@ -16,7 +16,7 @@ import (
 )
 
 // sampleTheme carries a Flavor with distinct palette values so the
-// rendered output makes it obvious which field landed where.
+// rendered template makes it obvious which field landed where.
 func sampleTheme() theme.Theme {
 	return theme.Theme{
 		Dirname: "mocha",
@@ -42,7 +42,7 @@ func writeThemeDir(t *testing.T, dirname, tmpl string) string {
 	return dir
 }
 
-// Run renders the template, creates <configDir>/zellij/themes/, and writes
+// Run renders the template, creates <configDir>/themes/, and writes
 // barista.kdl there. Reload touches config.kdl; the test asserts the file
 // is touched (created if missing) rather than spawning a real touch.
 func TestRunWritesBaristaKdlUnderZellijThemes(t *testing.T) {
@@ -53,12 +53,12 @@ func TestRunWritesBaristaKdlUnderZellijThemes(t *testing.T) {
 	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
-	got, err := os.ReadFile(filepath.Join(configDir, "zellij", "themes", "barista.kdl"))
+	got, err := os.ReadFile(filepath.Join(configDir, "themes", "barista.kdl"))
 	require.NoError(t, err)
 	assert.Equal(t, "name = Mocha\nbase = #1e1e2e", string(got))
 }
 
-// Run creates the zellij/themes/ directory tree when it does not yet exist.
+// Run creates the themes/ directory tree when it does not yet exist.
 func TestRunCreatesZellijThemesDir(t *testing.T) {
 	themesDir := writeThemeDir(t, "mocha", "{{name}}")
 	configDir := t.TempDir()
@@ -67,10 +67,10 @@ func TestRunCreatesZellijThemesDir(t *testing.T) {
 	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
-	assert.DirExists(t, filepath.Join(configDir, "zellij", "themes"))
+	assert.DirExists(t, filepath.Join(configDir, "themes"))
 }
 
-// Run touches <configDir>/zellij/config.kdl as its reload, creating it if
+// Run touches <configDir>/config.kdl as its reload, creating it if
 // it did not exist; the test asserts the file exists after Run.
 func TestRunTouchesConfigKdl(t *testing.T) {
 	themesDir := writeThemeDir(t, "mocha", "{{name}}")
@@ -80,7 +80,7 @@ func TestRunTouchesConfigKdl(t *testing.T) {
 	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
-	assert.FileExists(t, filepath.Join(configDir, "zellij", "config.kdl"))
+	assert.FileExists(t, filepath.Join(configDir, "config.kdl"))
 }
 
 // A missing template is not-applicable rather than a failure: Run returns

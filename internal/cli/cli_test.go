@@ -11,9 +11,9 @@ import (
 )
 
 // apply <theme> with a real theme and every template writes each
-// recipe's output and prints the served-up block: a header with the
+// recipe's artifact and prints the served-up block: a header with the
 // theme's name followed by a ✓ row per app that applied.
-func TestApplyServesUpThemeAndWritesAllOutputs(t *testing.T) {
+func TestApplyServesUpThemeAndWritesAllArtifacts(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	writeTheme(t, configDir, "catppuccin-mocha")
 
@@ -36,7 +36,7 @@ func TestApplyServesUpThemeAndWritesAllOutputs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "local name = Catppuccin Mocha", string(gotNvim))
 
-	gotZellij, err := os.ReadFile(filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
+	gotZellij, err := os.ReadFile(filepath.Join(configDir, "zellij", "themes", "barista.kdl"))
 	require.NoError(t, err)
 	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
 }
@@ -92,7 +92,7 @@ func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	assert.Contains(t, out.String(), "  • Neovim\n")
 	assert.Contains(t, out.String(), "  • Zellij\n")
 
-	// Ghostty still wrote its output.
+	// Ghostty still wrote its artifact.
 	assert.FileExists(t, filepath.Join(dataDir, "barista", "ghostty"))
 }
 
@@ -130,7 +130,7 @@ func TestRootNoArgsPrintsHelp(t *testing.T) {
 }
 
 // apply -v logs each recipe step to stderr, including the input files
-// read, output written, and reload actions performed.
+// read, artifacts written, and reload actions performed.
 func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
 	writeTheme(t, configDir, "catppuccin-mocha")
@@ -147,22 +147,22 @@ func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
 	assert.Contains(t, got, "Read existing env var")
 	assert.Contains(t, got, "Setting env var via fish")
 
-	// Ghostty: template read, output write, reload (pgrep no-op in tests).
+	// Ghostty: template read, artifact write, reload (pgrep no-op in tests).
 	assert.Contains(t, got, filepath.Join(themesDir, "ghostty.mustache"))
 	assert.Contains(t, got, filepath.Join(dataDir, "barista", "ghostty"))
 	assert.Contains(t, got, "Discovering ghostty pid")
 	assert.Contains(t, got, "reload skipped")
 
-	// Neovim: template read, dir create, output write, reload.
+	// Neovim: template read, dir create, artifact write, reload.
 	assert.Contains(t, got, filepath.Join(themesDir, "neovim.lua.mustache"))
 	assert.Contains(t, got, filepath.Join(dataDir, "barista", "nvim", "lua", "barista.lua"))
 	assert.Contains(t, got, "Scanning neovim runtime directory")
 
-	// Zellij: template read, dir create, output write, config touch.
+	// Zellij: template read, dir create, artifact write, config touch.
 	assert.Contains(t, got, filepath.Join(themesDir, "zellij.kdl.mustache"))
-	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
+	assert.Contains(t, got, filepath.Join(configDir, "zellij", "themes", "barista.kdl"))
 	assert.Contains(t, got, "Touching config file")
-	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "config.kdl"))
+	assert.Contains(t, got, filepath.Join(configDir, "zellij", "config.kdl"))
 }
 
 // apply --verbose works as the long form of -v.
@@ -174,7 +174,7 @@ func TestApplyVerboseLongFlagWorks(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 	assert.Contains(t, errOut.String(), "Reading template")
-	assert.Contains(t, errOut.String(), "Writing output")
+	assert.Contains(t, errOut.String(), "Writing artifact")
 }
 
 // apply without -v emits no per-step logs to stderr.
@@ -186,7 +186,7 @@ func TestApplyNonVerboseOmitsLogs(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 	assert.NotContains(t, errOut.String(), "Reading template")
-	assert.NotContains(t, errOut.String(), "Writing output")
+	assert.NotContains(t, errOut.String(), "Writing artifact")
 }
 
 // apply -v logs steps only for applied apps; skipped apps log the
@@ -207,7 +207,7 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 
 	// Ghostty applied: its render/write lines are present.
 	assert.Contains(t, got, "Rendering template")
-	assert.Contains(t, got, "Writing output")
+	assert.Contains(t, got, "Writing artifact")
 	assert.Contains(t, got, "Template not found; skipping")
 	assert.NotContains(t, got, "Setting env var via fish")
 	// Neovim skipped: no render line.
@@ -281,7 +281,7 @@ func TestApplyNoArgAccessibleDisambiguatesSharedNames(t *testing.T) {
 	assert.Contains(t, out.String(), "1. catppuccin-latte")
 	assert.Contains(t, out.String(), "2. catppuccin-mocha")
 
-	gotZellij, err := os.ReadFile(filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
+	gotZellij, err := os.ReadFile(filepath.Join(configDir, "zellij", "themes", "barista.kdl"))
 	require.NoError(t, err)
 	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
 }

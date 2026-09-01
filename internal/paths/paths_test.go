@@ -133,6 +133,55 @@ func TestEnsureDataDirIsIdempotent(t *testing.T) {
 	assert.Equal(t, filepath.Join(tmp, "barista"), got)
 }
 
+// ZellijConfigDir honours XDG_CONFIG_HOME when it points at an existing
+// directory, returning the zellij subdir under it.
+func TestZellijConfigDirUsesXDGConfigHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	got, err := paths.ZellijConfigDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(tmp, "zellij"), got)
+}
+
+// ZellijConfigDir falls back to ~/.config/zellij when XDG is unset.
+func TestZellijConfigDirFallsBackWhenXDGUnset(t *testing.T) {
+	home := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config"), 0o755))
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	got, err := paths.ZellijConfigDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".config", "zellij"), got)
+}
+
+// ZellijConfigDir falls back when XDG is set but non-existent.
+func TestZellijConfigDirFallsBackWhenXDGNonexistent(t *testing.T) {
+	home := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config"), 0o755))
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "does-not-exist"))
+
+	got, err := paths.ZellijConfigDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".config", "zellij"), got)
+}
+
+// ZellijConfigDir errors when neither candidate directory exists.
+func TestZellijConfigDirErrorsWhenNeitherExists(t *testing.T) {
+	home := t.TempDir() // no .config created
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	_, err := paths.ZellijConfigDir()
+
+	assert.Error(t, err)
+}
+
 // Join composes paths via filepath.Join, cleaning separators.
 func TestJoin(t *testing.T) {
 	assert.Equal(t, filepath.Join("a", "b", "c"), paths.Join("a", "b", "c"))

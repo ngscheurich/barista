@@ -3,7 +3,7 @@
 //
 // Three directories matter: the config directory (where themes and app
 // templates live), the themes directory (a subdirectory of the config
-// directory), and the data directory (where recipes write their output).
+// directory), and the data directory (where recipes write their artifacts).
 // Each is resolved from an XDG environment variable with a home-relative
 // fallback, selecting the first candidate that exists and is a directory.
 package paths
@@ -91,6 +91,19 @@ func resolve(primary, fallback string) (string, error) {
 		}
 	}
 	return "", ErrNoDir
+}
+
+// ZellijConfigDir returns the zellij config directory: $XDG_CONFIG_HOME/zellij,
+// falling back to ~/.config/zellij. The XDG variable is checked for an
+// existing directory before the fallback is tried; if neither exists it
+// returns a wrapped ErrNoDir. The barista zellij recipe writes theme files
+// here so zellij can discover them.
+func ZellijConfigDir() (string, error) {
+	base, err := resolve(os.Getenv("XDG_CONFIG_HOME"), homeConfigDir())
+	if err != nil {
+		return "", fmt.Errorf("zellij config dir: %w", err)
+	}
+	return filepath.Join(base, "zellij"), nil
 }
 
 // homeConfigDir returns the ~/.config directory, built from $HOME.
