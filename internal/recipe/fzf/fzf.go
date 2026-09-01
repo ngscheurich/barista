@@ -1,7 +1,7 @@
 // Package fzf implements the recipe for theming fzf: locate fzf.mustache
-// under the flavor's directory, render it against the flavor, and set
-// FZF_DEFAULT_OPTS via fish with the theme's --color flags replacing any
-// existing ones.
+// under the theme's directory, render it against the theme's Flavor, and
+// set FZF_DEFAULT_OPTS via fish with the rendered --color flags replacing
+// any existing ones.
 //
 // fzf reads its colors from the FZF_DEFAULT_OPTS environment variable.
 // The recipe reads the current value, strips every --color flag from it,
@@ -21,13 +21,13 @@ import (
 
 	"charm.land/log/v2"
 
-	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
+	"github.com/ngscheurich/barista/internal/theme"
 )
 
-// templateName is the Mustache file a flavor directory carries for fzf;
-// the recipe looks for it under <flavorsDir>/<flavor.Dirname>.
+// templateName is the Mustache file a theme directory carries for fzf;
+// the recipe looks for it under <themesDir>/<theme.Dirname>.
 const templateName = "fzf.mustache"
 
 // envVar is the environment variable fzf reads its options from.
@@ -48,25 +48,25 @@ var Fish = func(merged string) *exec.Cmd {
 	return exec.Command("fish", "-c", "set -Ux "+envVar+" '"+escaped+"'")
 }
 
-// Recipe is the fzf recipe: it carries the flavors directory it reads
+// Recipe is the fzf recipe: it carries the themes directory it reads
 // templates from.
 type Recipe struct {
-	flavorsDir string
+	themesDir string
 }
 
-// New builds an fzf recipe that reads templates from flavorsDir.
-func New(flavorsDir string) *Recipe {
-	return &Recipe{flavorsDir: flavorsDir}
+// New builds an fzf recipe that reads templates from themesDir.
+func New(themesDir string) *Recipe {
+	return &Recipe{themesDir: themesDir}
 }
 
-// Run renders the fzf template against f, replaces the --color flags in
-// the existing $FZF_DEFAULT_OPTS with the template's color flags, and
-// runs fish to set the variable as a universal export. A missing
-// template reports recipe.ErrNotApplicable so the orchestrator marks fzf
-// skipped. A failure at any step is wrapped with this layer's role
-// prefix; the orchestrator aggregates errors across recipes.
-func (r *Recipe) Run(f flavor.Flavor) error {
-	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+// Run renders the fzf template against t.Flavor, replaces the --color
+// flags in the existing $FZF_DEFAULT_OPTS with the template's color
+// flags, and runs fish to set the variable as a universal export. A
+// missing template reports recipe.ErrNotApplicable so the orchestrator
+// marks fzf skipped. A failure at any step is wrapped with this layer's
+// role prefix; the orchestrator aggregates errors across recipes.
+func (r *Recipe) Run(t theme.Theme) error {
+	tmplPath := filepath.Join(r.themesDir, t.Dirname, templateName)
 	log.Info("Locating template", "app", "fzf", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
@@ -79,7 +79,7 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 	log.Info("Reading template", "app", "fzf", "path", tmplPath)
 
 	log.Info("Rendering template", "app", "fzf")
-	rendered, err := template.Render(string(raw), f)
+	rendered, err := template.Render(string(raw), t.Flavor)
 	if err != nil {
 		return fmt.Errorf("fzf: %w", err)
 	}

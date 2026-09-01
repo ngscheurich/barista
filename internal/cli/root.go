@@ -13,7 +13,7 @@ import (
 func NewRoot() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "barista",
-		Short:         "Serves up a new flavor for your terminal apps.",
+		Short:         "Serves up a new theme for your terminal apps.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

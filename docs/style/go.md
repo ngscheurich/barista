@@ -2,7 +2,7 @@
 
 A guide to writing idiomatic Go for this codebase, distilled from [Effective Go](https://go.dev/doc/effective_go), the Go team's [Code Review Comments](https://go.dev/wiki/CodeReviewComments), the standard library, and the patterns established by the Bubble Tea / Charm ecosystem (`bubbletea`, `bubbles`, `lipgloss`, `huh`, `glamour`) and the cobra / Kubernetes lineage that shaped most modern CLI tooling.
 
-Barista is a CLI written in Go that reads TOML flavor palettes, renders Mustache templates, writes theme files for terminal applications (Ghostty, Neovim, Zellij), and triggers a reload in each. There is no server, no RPC, no network boundary — the "boundaries" that shape Barista's Go design are the filesystem (reading flavors, writing themes) and the child-process calls that reload each application (`pgrep`/`kill`, `nvim --server`, `touch`). A Bubble Tea TUI is a future possibility, not current scope; the TUI section below is forward-looking so the conventions are settled before any TUI code lands.
+Barista is a CLI written in Go that reads a theme (a Catppuccin flavor plus per-application Mustache templates), renders the templates against the flavor, writes each application's output, and triggers a reload. There is no server, no RPC, no network boundary — the "boundaries" that shape Barista's Go design are the filesystem (reading themes, writing output) and the child-process calls that reload each application (`pgrep`/`kill`, `nvim --server`, `touch`). A Bubble Tea TUI is a future possibility, not current scope; the TUI section below is forward-looking so the conventions are settled before any TUI code lands.
 
 Read §§1–4 before writing your first package. Jump to whichever layer your task touches, then come back to §16 for our local conventions and §17 for the open questions where the ecosystem hasn't converged. When in doubt, prefer stdlib idioms over inventing new ones.
 
@@ -22,10 +22,12 @@ internal/                           # private code; nothing outside this module 
   cli/                              # cobra command tree
     root.go
     apply.go
-  flavor/                           # Flavor, Palette types; Load reads + parses flavor.toml
-  paths/                            # XDG dir resolution, flavors/data/config paths, filepath join
+  theme/                            # Theme type; Load/List read themes from the themes directory
+  flavor/                           # Flavor, Palette types; Parse decodes flavor.toml content
+  paths/                            # XDG dir resolution, themes/data/config paths, filepath join
   template/                         # Mustache render wrapper
   recipe/                           # Recipe interface
+    fzf/
     ghostty/
     neovim/
     zellij/
@@ -55,7 +57,7 @@ Common commands:
 | --- | --- |
 | Build | `go build ./...` |
 | Build the CLI binary | `go build -o bin/barista ./cmd/barista` |
-| Run | `go run ./cmd/barista apply <flavor>` |
+| Run | `go run ./cmd/barista apply <theme>` |
 | Test | `go test ./...` |
 | Test with race detector | `go test -race ./...` |
 | Format | `gofmt -w .` or `goimports -w .` |
@@ -76,11 +78,11 @@ The rule of thumb: **default everything to `internal/`**. Promote a package to `
 A Go file declares its package in the first non-comment line. Every file in the same directory must share that package name. There is no other naming knob — the directory *is* the package.
 
 ```go
-// Package flavor defines the Flavor domain type and its loading from disk.
+// Package theme defines the Theme domain type and its loading from disk.
 //
-// A Flavor is a named collection of 26 Catppuccin colors (a Palette) read
-// from a flavor.toml file under the flavors directory.
-package flavor
+// A Theme pairs a Flavor (a named Catppuccin palette variant) with the
+// per-application templates that render it.
+package theme
 
 import (
     "fmt"
@@ -103,7 +105,7 @@ Conventions, in order of preference:
 
 - **Lowercase, single word, no underscores or mixedCaps.** `flavor`, not `Flavor` or `flavor_loader`.
 - **Singular.** `recipe`, not `recipes`. The package is one concept; the slice type is plural.
-- **No stutter with the type it owns.** A `flavor` package exports `Flavor`, not `FlavorFlavor`. It exports `Load`, not `LoadFlavor` (called as `flavor.Load(...)`).
+- **No stutter with the type it owns.** A `theme` package exports `Theme`, not `ThemeTheme`. It exports `Load`, not `LoadTheme` (called as `theme.Load(...)`).
 - **Avoid grab-bag names.** `util`, `common`, `helpers`, `misc` are smells — they grow without bound and tell the reader nothing. If you need three string helpers, put them in the package that already uses them, or inline.
 
 ## 3. Naming
@@ -116,22 +118,22 @@ Hard rules from the compiler:
 Strong conventions (Go team and stdlib):
 
 - **MixedCaps** for multi-word identifiers, not `snake_case` or `kebab-case`. `Subtext1`, not `subtext_1` or `Subtext_1`. (TOML keys stay `snake_case` — see §9 — but Go identifiers that wrap them are MixedCaps.)
-- **Initialisms keep their case.** `ID`, `URL`, `JSON`, `HTTP`, `UDS`. So `FlavorID`, `parseTOML`. *Mixed case versions like `Id` or `Url` are wrong* — `go vet` and most linters will flag this.
-- **Receivers are short**: `f *Flavor`, `r *Recipe`. One or two letters, the same letter every time the same type is the receiver. Never `self` or `this`.
+- **Initialisms keep their case.** `ID`, `URL`, `JSON`, `HTTP`, `UDS`. So `ThemeID`, `parseTOML`. *Mixed case versions like `Id` or `Url` are wrong* — `go vet` and most linters will flag this.
+- **Receivers are short**: `t *Theme`, `f *Flavor`, `r *Recipe`. One or two letters, the same letter every time the same type is the receiver. Never `self` or `this`.
 - **Getters drop the `Get` prefix.** A getter for the `name` field is `Name()`, not `GetName()`. Setters keep `Set`: `SetName(s string)`.
-- **Errors**: variables of type `error` start with `Err` (`ErrFlavorNotFound`); error types end in `Error` (`type ParseError struct{...}`).
-- **Interfaces named after the method**, with `-er` suffix when there's one method: `Reader`, `Writer`, `Stringer`. Multi-method interfaces describe the role: `Recipe`, `FlavorSource`.
+- **Errors**: variables of type `error` start with `Err` (`ErrNotFound`); error types end in `Error` (`type ParseError struct{...}`).
+- **Interfaces named after the method**, with `-er` suffix when there's one method: `Reader`, `Writer`, `Stringer`. Multi-method interfaces describe the role: `Recipe`, `ThemeSource`.
 - **Boolean-returning functions are predicates** starting with `Is`, `Has`, `Can`, or read as one: `IsEmpty()`, `HasTemplate()`, `CanApply()`. A method named `Applied()` returning `bool` is fine; `GetApplied()` is not.
 - **Constructors are `New` or `NewT` where `T` disambiguates.** A `recipe` package that builds different recipe kinds exports `recipe.NewGhostty(...)`, `recipe.NewNeovim(...)`.
 
-Avoid stuttering across package boundaries: `flavor.Flavor` reads as `flavor.Flavor` from outside the package, which is fine but mildly stuttery. Where a type is the package's central concept a little stutter is accepted (the stdlib has `time.Time`, `context.Context`); resist it for secondary types.
+Avoid stuttering across package boundaries: `theme.Theme` reads as `theme.Theme` from outside the package, which is fine but mildly stuttery. Where a type is the package's central concept a little stutter is accepted (the stdlib has `time.Time`, `context.Context`); resist it for secondary types.
 
 ## 4. Functions, methods, and receivers
 
 ```go
-// Load reads and parses the flavor named dirname from the flavors directory,
-// returning a Flavor ready to be rendered against a template.
-func Load(dirname string) (Flavor, error) {
+// Load reads the theme named dirname from the themes directory, returning a
+// Theme ready to render.
+func Load(dirname string) (Theme, error) {
     // ...
 }
 ```
@@ -148,13 +150,13 @@ Conventions:
 The choice is mostly mechanical:
 
 - **Use a pointer receiver if the method mutates the receiver**, or if the type contains a `sync.Mutex` / other non-copyable field, or if the type is large.
-- **Use a value receiver only for small, immutable, value-like types** — a `Palette` is 26 strings and immutable after construction, so value semantics may fit; a `Flavor` that owns a `Palette` plus a name and dirname is borderline and §17.7 decides the default.
+- **Use a value receiver only for small, immutable, value-like types** — a `Palette` is 26 strings and immutable after construction, so value semantics may fit; a `Theme` that owns a `Flavor` plus a dirname is borderline and §17.7 decides the default.
 - **Be consistent within a type**: if any method needs a pointer receiver, *all* methods on that type take a pointer receiver. Mixing the two is a documented Go gotcha — value receivers on a pointer-receiver type silently copy.
 
 ```go
-// Good — all methods on *Flavor take a pointer.
-func (f *Flavor) Reload() error
-func (f *Flavor) Name() string   // even read-only methods stay on the pointer
+// Good — all methods on *Theme take a pointer.
+func (t *Theme) Reload() error
+func (t *Theme) Name() string   // even read-only methods stay on the pointer
 ```
 
 ### Functional options
@@ -184,9 +186,13 @@ This pattern gives callers a future-proof API: adding a new option is non-breaki
 Structs are the workhorse. Model domain entities as structs with named, typed fields:
 
 ```go
+type Theme struct {
+    Dirname string
+    Flavor  Flavor
+}
+
 type Flavor struct {
     Name    string
-    Dirname string
     Palette Palette
 }
 
@@ -200,12 +206,12 @@ type Palette struct {
 }
 ```
 
-- **Zero values should be useful.** A `Flavor{}` should not panic on common operations; if it must be constructed through `Load`, document that and consider making the fields unexported where practical.
+- **Zero values should be useful.** A `Theme{}` (or `Flavor{}`) should not panic on common operations; if a value must be constructed through `Load`, document that and consider making the fields unexported where practical.
 - **Composition over inheritance**: Go has no inheritance. Embedding (a field whose type is itself a struct or interface, declared without a field name) gives you method promotion. Use it sparingly — it works well for *capability composition* (mixing in a `sync.Mutex`, a logger) but poorly for *domain modelling*. When you find yourself reaching for it to express "a Ghostty recipe is a kind of Recipe," use an explicit field or an interface instead.
 
 ### Struct literals
 
-Always use **keyed struct literals**: `Flavor{Name: n, Dirname: d}`, not `Flavor{n, d}`. Positional literals break silently when a field is added or reordered. `go vet` enforces this for stdlib types; we enforce it everywhere via `golangci-lint`.
+Always use **keyed struct literals**: `Theme{Dirname: d, Flavor: f}`, not `Theme{d, f}`. Positional literals break silently when a field is added or reordered. `go vet` enforces this for stdlib types; we enforce it everywhere via `golangci-lint`.
 
 ### Field tags and TOML
 
@@ -235,7 +241,7 @@ Go interfaces are structural — any type with the right methods satisfies the i
 ```go
 // package cli
 type recipeRunner interface {
-    Run(f flavor.Flavor) error
+    Run(t theme.Theme) error
 }
 ```
 
@@ -247,14 +253,14 @@ The concrete implementation lives in `internal/recipe/ghostty/ghostty.go` and ex
 
 Concrete corollary: **a Go function should usually accept interfaces and return concrete types.** Accepting an interface lets callers pass anything; returning `*Recipe` gives callers the full API. Returning an interface is appropriate when the concrete type is genuinely an implementation detail.
 
-The bar for declaring an interface is: *there are, today, two or more concrete implementations, or there will be in the next change.* Barista has three recipes (Ghostty, Neovim, Zellij), so a `Recipe` interface is justified at the `cli`/orchestration seam. Otherwise just use the concrete type.
+The bar for declaring an interface is: *there are, today, two or more concrete implementations, or there will be in the next change.* Barista has four recipes (fzf, Ghostty, Neovim, Zellij), so a `Recipe` interface is justified at the `cli`/orchestration seam. Otherwise just use the concrete type.
 
 ## 7. Error handling
 
 Go has no exceptions. Errors are values, returned alongside results, checked explicitly.
 
 ```go
-f, err := flavor.Load(dirname)
+t, err := theme.Load(dirname)
 if err != nil {
     return fmt.Errorf("apply %s: %w", dirname, err)
 }
@@ -269,10 +275,10 @@ The single most common piece of Go code. Read it as a return-on-error short-circ
 `fmt.Errorf("context: %w", err)` produces a new error that *wraps* the original. Wrap when you cross a layer boundary and want to add context but preserve the underlying error for `errors.Is` / `errors.As`:
 
 ```go
-func loadFlavor(dirname string) (flavor.Flavor, error) {
-    raw, err := os.ReadFile(filepath.Join(flavorsDir, dirname, "flavor.toml"))
+func loadTheme(dirname string) (theme.Theme, error) {
+    raw, err := os.ReadFile(filepath.Join(themesDir, dirname, "flavor.toml"))
     if err != nil {
-        return flavor.Flavor{}, fmt.Errorf("read flavor %s: %w", dirname, err)
+        return theme.Theme{}, fmt.Errorf("read theme %s: %w", dirname, err)
     }
     // ...
 }
@@ -284,7 +290,7 @@ The verb is `%w`, not `%s` or `%v`. `%w` preserves the chain; `%s` flattens it t
 
 ```go
 // Sentinel comparison
-if errors.Is(err, ErrFlavorNotFound) { return nil }
+if errors.Is(err, theme.ErrNotFound) { return nil }
 
 // Typed extraction
 var pe *toml.ParseError
@@ -302,9 +308,9 @@ Two patterns, both common, both fine in their place:
 **Sentinel** — a package-level error value, compared with `errors.Is`:
 
 ```go
-var ErrFlavorNotFound = errors.New("flavor not found")
+var ErrNotFound = errors.New("theme not found")
 
-if errors.Is(err, flavor.ErrFlavorNotFound) { ... }
+if errors.Is(err, theme.ErrNotFound) { ... }
 ```
 
 Use for *categorical* failures where the caller only needs to know "this happened" — `io.EOF`, `os.ErrNotExist`, `context.Canceled`.
@@ -334,7 +340,7 @@ Barista runs all three recipes and reports every error at the end (a deliberate 
 ```go
 var errs []error
 for _, r := range recipes {
-    if err := r.Run(f); err != nil {
+    if err := r.Run(t); err != nil {
         errs = append(errs, fmt.Errorf("%s: %w", r.App(), err))
     }
 }
@@ -345,7 +351,7 @@ if len(errs) > 0 {
 
 ### 7.6 `panic` and `recover`
 
-`panic` is for *programmer errors* — invariants the code itself violates, like indexing past a slice or dereferencing a nil pointer. Never use it for control flow, and never use it to signal "expected" failures (missing flavor files, TOML parse errors, reload failures).
+`panic` is for *programmer errors* — invariants the code itself violates, like indexing past a slice or dereferencing a nil pointer. Never use it for control flow, and never use it to signal "expected" failures (missing theme files, TOML parse errors, reload failures).
 
 **Reserve `panic` for `main` and `init`-time impossibilities**, paired with a comment that makes the invariant explicit. `recover` is even rarer — the only legitimate use is at goroutine boundaries to keep one bad worker from killing the program.
 
@@ -353,10 +359,10 @@ if len(errs) > 0 {
 
 ```go
 // Wrong
-result, _ := flavor.Load(dirname)
+result, _ := theme.Load(dirname)
 
 // Right
-result, err := flavor.Load(dirname)
+result, err := theme.Load(dirname)
 if err != nil { /* handle or propagate */ }
 ```
 
@@ -369,7 +375,7 @@ If an error is truly safe to ignore, write a comment saying why.
 
 ## 8. Concurrency: goroutines, channels, context
 
-Barista is mostly serial: load a flavor, then run three recipes in sequence. There is no long-running server and no event loop today. So most code should *not* spawn goroutines directly — but when concurrency is introduced (running the three recipes in parallel is a plausible future change), follow these rules.
+Barista is mostly serial: load a theme, then run its recipes in sequence. There is no long-running server and no event loop today. So most code should *not* spawn goroutines directly — but when concurrency is introduced (running the three recipes in parallel is a plausible future change), follow these rules.
 
 ### 8.1 Goroutines have owners
 
@@ -397,7 +403,7 @@ return reloadGhostty(ctx)
 
 ### 8.3 Parallel recipes (future)
 
-If the three recipes ever run concurrently, `golang.org/x/sync/errgroup` is the clean shape — it gives cancellation + first-error collection in one type, and pairs naturally with the aggregated-error strategy in §7.5:
+If the recipes ever run concurrently, `golang.org/x/sync/errgroup` is the clean shape — it gives cancellation + first-error collection in one type, and pairs naturally with the aggregated-error strategy in §7.5:
 
 ```go
 g, ctx := errgroup.WithContext(ctx)
@@ -500,8 +506,8 @@ This is Barista's actual boundary — the filesystem and the child processes tha
 Prefer `os.ReadFile` / `os.WriteFile` for whole-file operations and `os.MkdirAll` for directory creation (the Go equivalent of `mkdir -p`, replacing the Gleam version's `child_process` call to `mkdir`). Check existence with `os.Stat` and `errors.Is(err, os.ErrNotExist)` rather than a separate `is_file` call:
 
 ```go
-func themeFilepath(flavorsDir, dirname, filename string) (string, error) {
-    p := filepath.Join(flavorsDir, dirname, filename)
+func templateFilepath(themesDir, dirname, filename string) (string, error) {
+    p := filepath.Join(themesDir, dirname, filename)
     info, err := os.Stat(p)
     if err != nil {
         if errors.Is(err, os.ErrNotExist) {
@@ -579,7 +585,7 @@ Barista uses [cobra](https://github.comgithub.com/spf13/cobra), which underpins 
 func NewRoot() *cobra.Command {
     cmd := &cobra.Command{
         Use:           "barista",
-        Short:         "Serves up a new flavor for your terminal apps.",
+        Short:         "Serves up a new theme for your terminal apps.",
         SilenceUsage:  true,  // don't print usage on RunE error
         SilenceErrors: true,  // we print errors ourselves
     }
@@ -595,8 +601,8 @@ The `apply` command:
 
 func newApplyCmd() *cobra.Command {
     return &cobra.Command{
-        Use:   "apply <flavor>",
-        Short: "Apply a flavor to all configured applications",
+        Use:   "apply <theme>",
+        Short: "Apply a theme to all configured applications",
         Args:  cobra.ExactArgs(1),
         RunE: func(cmd *cobra.Command, args []string) error {
             ctx := cmd.Context()
@@ -658,7 +664,7 @@ The standard library's `testing` package is sufficient. Conventions:
 - **`t.Parallel()`** at the top of any test that doesn't share state with siblings.
 - **`t.Helper()`** in any helper function that calls `t.Fatal` / `t.Error`, so failure messages point at the caller.
 - **`t.Cleanup(fn)`** instead of `defer` for teardown; runs even when a parent test fails.
-- **`testing.T.TempDir()`** and **`testing.T.Context()`** (Go 1.24+) — let the framework manage scratch directories and cancellation. Barista's tests should lean on `TempDir` heavily: build a fake flavors directory, write a `flavor.toml` and templates into it, point `paths` at it, and run `apply` end-to-end without touching the user's real config.
+- **`testing.T.TempDir()`** and **`testing.T.Context()`** (Go 1.24+) — let the framework manage scratch directories and cancellation. Barista's tests should lean on `TempDir` heavily: build a fake themes directory, write a `flavor.toml` and templates into it, point `paths` at it, and run `apply` end-to-end without touching the user's real config.
 
 ### Table-driven tests
 
@@ -698,7 +704,7 @@ if diff := cmp.Diff(want, got); diff != "" {
 
 ### Golden files
 
-For tests of template output or generated theme files, write the expected output to `testdata/<name>.golden` and compare. Add a `-update` flag to regenerate on changes:
+For tests of template output or generated output files, write the expected output to `testdata/<name>.golden` and compare. Add a `-update` flag to regenerate on changes:
 
 ```go
 var update = flag.Bool("update", false, "update golden files")
@@ -715,7 +721,7 @@ if !bytes.Equal(got, want) { /* fail with diff */ }
 The reload steps shell out to external processes (`pgrep`, `kill`, `nvim`, `touch`) and are harder to unit-test. Two seams:
 
 - **Extract the command construction** into a function that returns `*exec.Cmd` without running it, so a test can assert the command and args without spawning a process.
-- **Integration test the full `apply`** against a `TempDir` flavors directory, mocking or skipping the reload step via a flag or a seam (`var reloadFunc = reloadGhostty` that the test swaps).
+- **Integration test the full `apply`** against a `TempDir` themes directory, mocking or skipping the reload step via a flag or a seam (`var reloadFunc = reloadGhostty` that the test swaps).
 
 ## 14. Logging
 
@@ -726,7 +732,7 @@ import "log/slog"
 
 logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-logger.Debug("resolved flavors dir", "path", flavorsDir)
+logger.Debug("resolved themes dir", "path", themesDir)
 ```
 
 Conventions:
@@ -743,29 +749,29 @@ Godoc renders any comment *immediately preceding* a top-level declaration as tha
 - **Package comment** on the file that declares the package, starts with `// Package <name> `:
 
   ```go
-  // Package flavor defines the Flavor domain type and its loading from disk.
+  // Package theme defines the Theme domain type and its loading from disk.
   //
-  // A Flavor is a named collection of 26 Catppuccin colors (a Palette) read
-  // from a flavor.toml file under the flavors directory.
-  package flavor
+  // A Theme pairs a Flavor (a named Catppuccin palette variant) with the
+  // per-application templates that render it.
+  package theme
   ```
 
 - **Exported declarations** start their doc comment with the identifier name:
 
   ```go
-  // Load reads and parses the flavor named dirname from the flavors
-  // directory, returning a Flavor ready to be rendered against a template.
-  func Load(dirname string) (Flavor, error) { ... }
+  // Load reads the theme named dirname from the themes directory, returning
+  // a Theme ready to render.
+  func Load(dirname string) (Theme, error) { ... }
   ```
 
   Starting with the identifier matters because tools (`go doc`, IDE hovers) display the first sentence as a one-liner.
 
-- **Doc links** use bracket notation: `[Flavor.Palette]`, `[paths.FlavorsDir]`. Renders as a link on pkg.go.dev and in modern IDEs.
+- **Doc links** use bracket notation: `[Theme.Dirname]`, `[paths.ThemesDir]`. Renders as a link on pkg.go.dev and in modern IDEs.
 - **Examples** (`func ExampleLoad()` etc.) are surfaced inline in godoc and double as tests with an `// Output:` comment.
 - **Don't document obvious things.** `// Flavor represents a flavor.` is worse than no comment; delete it. Document *why* and *invariants*, not *what the name already says*.
 - **If a comment explains the name, the name is wrong.** Rename the declaration rather than annotate it.
-- **Ordering-dependency comments state the dependency and stop.** When a comment survives because one statement must run before another, write it in that shape — `// Ensure the data dir before loading the flavor, so the recipe writes don't fail on a missing dir` — and nothing more.
-- **No references to documents outside the code.** A comment never cites `docs/adrs/…`, `docs/specs/…`, or a bare `ADR-0001`. Compress any non-obvious *why* into the comment itself and drop the pointer — the reasoning is found from `docs/adrs/`, not a footnote in the source. A `[paths.FlavorsDir]` doc link to another Go symbol is fine; a link out to prose under `docs/` is not. Succinct by default, not by hard cap: keep the lines a real invariant needs, cut everything else. Unexported functions rarely earn a comment at all — name them well and leave them bare.
+- **Ordering-dependency comments state the dependency and stop.** When a comment survives because one statement must run before another, write it in that shape — `// Ensure the data dir before loading the theme, so the recipe writes don't fail on a missing dir` — and nothing more.
+- **No references to documents outside the code.** A comment never cites `docs/adrs/…`, `docs/specs/…`, or a bare `ADR-0001`. Compress any non-obvious *why* into the comment itself and drop the pointer — the reasoning is found from `docs/adrs/`, not a footnote in the source. A `[paths.ThemesDir]` doc link to another Go symbol is fine; a link out to prose under `docs/` is not. Succinct by default, not by hard cap: keep the lines a real invariant needs, cut everything else. Unexported functions rarely earn a comment at all — name them well and leave them bare.
 - **Wrap comment prose at 80 columns.** `gofmt` reflows code but leaves comment text as written, so wrap by hand. (See [`prose.md`](prose.md).)
 
 ## 16. Conventions to adopt for Barista
@@ -775,10 +781,10 @@ These are the locally-decided defaults. Override only with a comment justifying 
 1. **`internal/` for everything by default.** Promote to `pkg/` only when a concrete external consumer exists.
 2. **`goimports` (not just `gofmt`) on save.** Three import blocks, alphabetised within each.
 3. **Package names are singular, lowercase, no underscores.** No `util`, `common`, `helpers`.
-4. **MixedCaps everywhere, initialisms preserved.** `FlavorID`, `parseTOML`, never `FlavorId` or `Parse_toml`. TOML keys stay `snake_case`; the Go identifiers that wrap them are MixedCaps.
-5. **`cobra` for the CLI** (`barista apply <flavor>`).
+4. **MixedCaps everywhere, initialisms preserved.** `ThemeID`, `parseTOML`, never `ThemeId` or `Parse_toml`. TOML keys stay `snake_case`; the Go identifiers that wrap them are MixedCaps.
+5. **`cobra` for the CLI** (`barista apply <theme>`).
 6. **Functional options** for constructors with more than two optional arguments; small `Config` struct otherwise.
-7. **Errors wrapped with `%w`** at every layer boundary. Wrap with a one-phrase prefix identifying *this* layer's role (`fmt.Errorf("read flavor %s: %w", dirname, err)`).
+7. **Errors wrapped with `%w`** at every layer boundary. Wrap with a one-phrase prefix identifying *this* layer's role (`fmt.Errorf("read theme %s: %w", dirname, err)`).
 8. **Sentinel errors for categorical failures, typed errors for structured detail.** Start with sentinels; promote to typed only when a caller needs fields.
 9. **Pointer receivers throughout a type if any method needs one.** Don't mix.
 10. **No package-level mutable state** beyond logger and configuration.
@@ -787,7 +793,7 @@ These are the locally-decided defaults. Override only with a comment justifying 
 13. **Doc comments on every exported identifier.** Start with the identifier name. **No references to `docs/`** — compress the *why* inline, drop the citation.
 14. **No `init()`** outside `cmd/barista/main.go`. Hidden init is hidden control flow.
 15. **`go vet ./...` and `golangci-lint run` are CI gates.** Locally: pre-commit hooks run both.
-16. **Command nouns are singular; collections stay plural.** `barista apply <flavor>` acts on one flavor; a directory listing many flavors is the plural `flavors`. A command invokes a verb on one noun; a collection holds many.
+16. **Command nouns are singular; collections stay plural.** `barista apply <theme>` acts on one theme; a directory listing many themes is the plural `themes`. A command invokes a verb on one noun; a collection holds many.
 
 ## 17. Open questions
 
@@ -803,7 +809,7 @@ Style points where the ecosystem is split, or where this repo hasn't decided. De
 
 5. **`context.Context` placement on cobra commands.** Cobra commands carry a `Context()` accessor, seeded via `cmd.ExecuteContext(ctx)` in `main`. Some projects stash request-scoped values (config, paths) in the context; others wire those explicitly. Wiring explicitly is cleaner; context-stashing is more cobra-idiomatic. Pick.
 
-6. **Pointer vs value for domain types.** `*Flavor` vs `Flavor` in returned values, function parameters, and slice element types. `Flavor` owns a 26-field `Palette`, so it's not tiny — pointers avoid copying it on every pass. Lean toward value types for small immutable domain values (an `ID` wrapper) and pointers for `Flavor`/`Palette`. §4's receiver rule then follows: `Flavor` methods take pointer receivers.
+6. **Pointer vs value for domain types.** `*Theme` vs `Theme` in returned values, function parameters, and slice element types. `Theme` owns a `Flavor` (which owns a 26-field `Palette`), so it's not tiny — pointers avoid copying it on every pass. Lean toward value types for small immutable domain values (an `ID` wrapper) and pointers for `Theme`/`Palette`. §4's receiver rule then follows: `Theme` methods take pointer receivers.
 
 7. **Build tags.** If integration tests that spawn real `pgrep`/`nvim`/`touch` processes land, they want build tags (`//go:build integration`) so `go test ./...` doesn't run them by default. Decide on a small set of canonical tags and document them.
 
@@ -822,8 +828,8 @@ Style points where the ecosystem is split, or where this repo hasn't decided. De
 ## Appendix A: Quick reference
 
 ```go
-// Package flavor defines the Flavor domain type and its loading from disk.
-package flavor
+// Package theme defines the Theme domain type and its loading from disk.
+package theme
 
 import (
     "errors"
@@ -831,48 +837,33 @@ import (
     "os"
     "path/filepath"
 
-    "github.com/BurntSushi/toml"
-    "github.com/google/go-cmp/cmp"
-
-    "github.com/ngscheurich/barista/internal/paths"
+    "github.com/ngscheurich/barista/internal/flavor"
 )
 
-// Palette is the 26 Catppuccin color values inside a Flavor.
-type Palette struct {
-    Rosewater string
-    Flamingo  string
-    Pink      string
-    Mauve     string
-    // ... all 26 colors
-    Crust string
-}
-
-// Flavor is a named collection of colors that maps to the Catppuccin palette
-// spec.
-type Flavor struct {
-    Name    string
+// Theme pairs a Flavor with the directory it was loaded from.
+type Theme struct {
     Dirname string
-    Palette Palette
+    Flavor  flavor.Flavor
 }
 
-// ErrNotFound is returned when a flavor directory or file is missing.
-var ErrNotFound = errors.New("flavor not found")
+// ErrNotFound is returned when a theme's flavor.toml is missing.
+var ErrNotFound = errors.New("theme not found")
 
-// Load reads and parses the flavor named dirname from the flavors directory.
-func Load(flavorsDir, dirname string) (Flavor, error) {
-    p := filepath.Join(flavorsDir, dirname, "flavor.toml")
+// Load reads the theme named dirname from the themes directory.
+func Load(themesDir, dirname string) (Theme, error) {
+    p := filepath.Join(themesDir, dirname, "flavor.toml")
     raw, err := os.ReadFile(p)
     if err != nil {
         if errors.Is(err, os.ErrNotExist) {
-            return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, ErrNotFound)
+            return Theme{}, fmt.Errorf("load theme %s: %w", dirname, ErrNotFound)
         }
-        return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, err)
+        return Theme{}, fmt.Errorf("load theme %s: %w", dirname, err)
     }
-    var f flavorFile
-    if err := toml.Unmarshal(raw, &f); err != nil {
-        return Flavor{}, fmt.Errorf("parse flavor %s: %w", dirname, err)
+    f, err := flavor.Parse(raw)
+    if err != nil {
+        return Theme{}, fmt.Errorf("load theme %s: %w", dirname, err)
     }
-    return fromFile(dirname, f), nil
+    return Theme{Dirname: dirname, Flavor: f}, nil
 }
 ```
 

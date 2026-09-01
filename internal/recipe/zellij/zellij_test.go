@@ -12,30 +12,33 @@ import (
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/zellij"
+	"github.com/ngscheurich/barista/internal/theme"
 )
 
-// sampleFlavor carries distinct palette values so the rendered output
-// makes it obvious which field landed where.
-func sampleFlavor() flavor.Flavor {
-	return flavor.Flavor{
-		Name:    "Mocha",
+// sampleTheme carries a Flavor with distinct palette values so the
+// rendered output makes it obvious which field landed where.
+func sampleTheme() theme.Theme {
+	return theme.Theme{
 		Dirname: "mocha",
-		Palette: flavor.Palette{
-			Base:  "#1e1e2e",
-			Text:  "#cdd6f4",
-			Crust: "#11111b",
+		Flavor: flavor.Flavor{
+			Name: "Mocha",
+			Palette: flavor.Palette{
+				Base:  "#1e1e2e",
+				Text:  "#cdd6f4",
+				Crust: "#11111b",
+			},
 		},
 	}
 }
 
-// writeFlavorDir creates a flavors dir containing <dirname>/zellij.kdl.mustache
-// and returns the flavors dir path.
-func writeFlavorDir(t *testing.T, dirname, tmpl string) string {
+// writeThemeDir creates a themes dir containing <dirname>/zellij.kdl.mustache
+// and returns the themes dir path.
+func writeThemeDir(t *testing.T, dirname, tmpl string) string {
 	t.Helper()
 	dir := t.TempDir()
-	flavorDir := filepath.Join(dir, dirname)
-	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "zellij.kdl.mustache"), []byte(tmpl), 0o644))
+	themeDir := filepath.Join(dir, dirname)
+	require.NoError(t, os.MkdirAll(themeDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "zellij.kdl.mustache"), []byte(tmpl), 0o644))
 	return dir
 }
 
@@ -43,11 +46,11 @@ func writeFlavorDir(t *testing.T, dirname, tmpl string) string {
 // barista.kdl there. Reload touches config.kdl; the test asserts the file
 // is touched (created if missing) rather than spawning a real touch.
 func TestRunWritesBaristaKdlUnderZellijThemes(t *testing.T) {
-	flavorsDir := writeFlavorDir(t, "mocha", "name = {{name}}\nbase = {{palette.base}}")
+	themesDir := writeThemeDir(t, "mocha", "name = {{name}}\nbase = {{palette.base}}")
 	configDir := t.TempDir()
 
-	r := zellij.New(flavorsDir, configDir)
-	err := r.Run(sampleFlavor())
+	r := zellij.New(themesDir, configDir)
+	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
 	got, err := os.ReadFile(filepath.Join(configDir, "zellij", "themes", "barista.kdl"))
@@ -57,11 +60,11 @@ func TestRunWritesBaristaKdlUnderZellijThemes(t *testing.T) {
 
 // Run creates the zellij/themes/ directory tree when it does not yet exist.
 func TestRunCreatesZellijThemesDir(t *testing.T) {
-	flavorsDir := writeFlavorDir(t, "mocha", "{{name}}")
+	themesDir := writeThemeDir(t, "mocha", "{{name}}")
 	configDir := t.TempDir()
 
-	r := zellij.New(flavorsDir, configDir)
-	err := r.Run(sampleFlavor())
+	r := zellij.New(themesDir, configDir)
+	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
 	assert.DirExists(t, filepath.Join(configDir, "zellij", "themes"))
@@ -70,11 +73,11 @@ func TestRunCreatesZellijThemesDir(t *testing.T) {
 // Run touches <configDir>/zellij/config.kdl as its reload, creating it if
 // it did not exist; the test asserts the file exists after Run.
 func TestRunTouchesConfigKdl(t *testing.T) {
-	flavorsDir := writeFlavorDir(t, "mocha", "{{name}}")
+	themesDir := writeThemeDir(t, "mocha", "{{name}}")
 	configDir := t.TempDir()
 
-	r := zellij.New(flavorsDir, configDir)
-	err := r.Run(sampleFlavor())
+	r := zellij.New(themesDir, configDir)
+	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
 	assert.FileExists(t, filepath.Join(configDir, "zellij", "config.kdl"))
@@ -84,11 +87,11 @@ func TestRunTouchesConfigKdl(t *testing.T) {
 // an error wrapping recipe.ErrNotApplicable, which the orchestrator treats
 // as a skip.
 func TestRunMissingTemplateIsNotApplicable(t *testing.T) {
-	flavorsDir := t.TempDir() // no flavor dir written
+	themesDir := t.TempDir() // no theme dir written
 	configDir := t.TempDir()
 
-	r := zellij.New(flavorsDir, configDir)
-	err := r.Run(sampleFlavor())
+	r := zellij.New(themesDir, configDir)
+	err := r.Run(sampleTheme())
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, recipe.ErrNotApplicable),

@@ -29,7 +29,7 @@ func TestPickAccessible(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "catppuccin-latte", got)
-	assert.Contains(t, out.String(), "Choose a flavor")
+	assert.Contains(t, out.String(), "Choose a theme")
 	assert.Contains(t, out.String(), "1. Catppuccin Latte")
 	assert.Contains(t, out.String(), "2. Catppuccin Mocha")
 	assert.Contains(t, out.String(), "Enter a number between 1 and 2")
@@ -53,7 +53,7 @@ func TestPickAccessibleReprompts(t *testing.T) {
 // EOF on stdin selects the first option: huh's accessible prompt
 // treats end-of-input as accepting the default. Pinned here because
 // it is why accessible mode is opt-in and never enabled implicitly —
-// an implicit run over a dead pipe would apply a flavor unasked.
+// an implicit run over a dead pipe would apply a theme unasked.
 func TestPickAccessibleEOFSelectsDefault(t *testing.T) {
 	var out bytes.Buffer
 

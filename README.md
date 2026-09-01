@@ -1,24 +1,24 @@
 # Barista
 
-Barista takes a flavor (a named color palette in Catppuccin's format) and
-serves it to terminal applications — rendering templates into theme files
-and triggering a reload in each.
+Barista takes a theme (a Catppuccin flavor plus one or more application
+templates) and serves it to terminal applications — rendering the
+templates into each app's output and triggering a reload in each.
 
-# Flavors
+# Themes
 
-Flavors consist of a `flavor.toml` data file and one or more application
-templates. By default, user-specified flavors are located at
-`$XDG_CONFIG_HOME/barista/flavors`.
+A theme consists of a `flavor.toml` data file (the Catppuccin flavor) and
+one or more application templates. By default, themes are located at
+`$XDG_CONFIG_HOME/barista/themes`.
 
 ## Example
 
-A flavor is a directory under `flavors/` containing a `flavor.toml` data
+A theme is a directory under `themes/` containing a `flavor.toml` data
 file and one Mustache template per application:
 
 ```
 ~/.config
 └── barista
-    └── flavors
+    └── themes
         └── catppuccin-mocha
             ├── flavor.toml
             ├── ghostty.mustache
@@ -63,7 +63,7 @@ crust     = "#11111b"
 
 Each template is a Mustache file rendered against two context keys:
 
-- `{{name}}` — the flavor's `name` string.
+- `{{name}}` — the theme's name (the flavor's `name` field).
 - `{{palette.<color>}}` — any of the 26 Catppuccin colors by its
   snake_case name (`rosewater`, `flamingo`, … `crust`).
 
@@ -86,12 +86,12 @@ cursor-color = #f5e0dc
 ```
 
 Running `barista apply catppuccin-mocha` renders each template against the
-flavor and writes the result to the application's theme location.
+theme's flavor and writes the output to the application's location.
 
 Running `barista apply` with no argument opens an interactive picker of
-your available flavors. The picker needs a terminal; when its input is
+your available themes. The picker needs a terminal; when its input is
 not a terminal (in a script or a pipe) the command fails with a plain
-list of the available flavors instead. Set `BARISTA_ACCESSIBLE=1` to run
+list of the available themes instead. Set `BARISTA_ACCESSIBLE=1` to run
 the picker in accessible mode: plain numbered prompts instead of a TUI,
 which is what screen readers need and also works over a pipe.
 
@@ -99,11 +99,11 @@ which is what screen readers need and also works over a pipe.
 
 A recipe tells Barista how to:
 
-1. Convert a flavor template into a theme for a particular application
-2. Load the new theme in the application after conversion
+1. Render a theme's template into output for a particular application
+2. Reload the application after rendering
 
-Recipes output application themes to `$XDG_DATA_HOME/barista`, except
-Zellij, which reads its themes from the user's config directory.
+Recipes write their output to `$XDG_DATA_HOME/barista`, except Zellij,
+which reads its themes from the user's config directory.
 
 ## Ghostty
 
@@ -118,11 +118,11 @@ in your main Ghostty config.
 
 The [Neovim] recipe has two dependencies:
 
-- [Barista for Neovim], to load the current flavor
+- [Barista for Neovim], to load the generated `barista.lua`
 - [Catppuccin for Neovim], the theming framework
 
-The recipe outputs a flavor plugin to `~/.local/share/barista/nvim`. Load
-the plugin in your Neovim config and run `setup`.
+The recipe writes `barista.lua` to `~/.local/share/barista/nvim/lua`. Load
+it in your Neovim config and run `setup`.
 
 > [!IMPORTANT]
 > Ensure the dependencies are available when you run `setup`.
@@ -157,10 +157,10 @@ reload, which the recipe triggers by touching `config.kdl`.
 barista apply <theme>
 ```
 
-`<theme>` is the directory name of a flavor under the flavors directory.
-On success Barista prints `☕︎ Served up <name>` (the flavor's name, not
-the dirname) and exits zero; on any failure it prints the error(s) to
-stderr and exits non-zero.
+`<theme>` is the directory name of a theme under the themes directory.
+On success Barista prints `☕︎ Served up <name>` (the theme's name, read
+from the flavor's `name` field, not the dirname) and exits zero; on any
+failure it prints the error(s) to stderr and exits non-zero.
 
 ## Development
 

@@ -46,21 +46,21 @@ func useTempDirs(t *testing.T) (configDir, dataDir string) {
 	return configDir, dataDir
 }
 
-// writeFlavor creates a flavors/<dirname> directory under configDir with a
+// writeTheme creates a themes/<dirname> directory under configDir with a
 // complete flavor.toml and a mustache template per recipe, so apply can
-// load and render the flavor end-to-end across every recipe.
-func writeFlavor(t *testing.T, configDir, dirname string) {
+// load and render the theme end-to-end across every recipe.
+func writeTheme(t *testing.T, configDir, dirname string) {
 	t.Helper()
-	flavorDir := filepath.Join(configDir, "barista", "flavors", dirname)
-	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "fzf.mustache"), []byte("# {{name}}"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "neovim.lua.mustache"), []byte("local name = {{name}}"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "zellij.kdl.mustache"), []byte("name = {{name}}"), 0o644))
+	themeDir := filepath.Join(configDir, "barista", "themes", dirname)
+	require.NoError(t, os.MkdirAll(themeDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "fzf.mustache"), []byte("# {{name}}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "ghostty.mustache"), []byte("name = {{name}}\nbase = {{palette.base}}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "neovim.lua.mustache"), []byte("local name = {{name}}"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "zellij.kdl.mustache"), []byte("name = {{name}}"), 0o644))
 }
 
-// fullFlavorTOML is a complete flavor.toml with all 26 colors so flavor.Load
+// fullFlavorTOML is a complete flavor.toml with all 26 colors so theme.Load
 // succeeds; only a few colors are referenced by the test template.
 const fullFlavorTOML = `name = "Catppuccin Mocha"
 

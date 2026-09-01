@@ -60,15 +60,15 @@ func TestConfigDirErrorsWhenNeitherExists(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// FlavorsDir is the flavors/ subdirectory of the resolved config dir.
-func TestFlavorsDirIsUnderConfigDir(t *testing.T) {
+// ThemesDir is the themes/ subdirectory of the resolved config dir.
+func TestThemesDirIsUnderConfigDir(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 
-	got, err := paths.FlavorsDir()
+	got, err := paths.ThemesDir()
 
 	assert.NoError(t, err)
-	assert.Equal(t, filepath.Join(tmp, "barista", "flavors"), got)
+	assert.Equal(t, filepath.Join(tmp, "barista", "themes"), got)
 }
 
 func TestDataDirUsesXDGDataHome(t *testing.T) {

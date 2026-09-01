@@ -1,9 +1,9 @@
 // Package paths resolves the filesystem locations Barista reads from and
 // writes to.
 //
-// Three directories matter: the config directory (where flavors and app
-// templates live), the flavors directory (a subdirectory of the config
-// directory), and the data directory (where generated themes are written).
+// Three directories matter: the config directory (where themes and app
+// templates live), the themes directory (a subdirectory of the config
+// directory), and the data directory (where recipes write their output).
 // Each is resolved from an XDG environment variable with a home-relative
 // fallback, selecting the first candidate that exists and is a directory.
 package paths
@@ -31,14 +31,14 @@ func ConfigDir() (string, error) {
 	return filepath.Join(base, "barista"), nil
 }
 
-// FlavorsDir returns the flavors directory, located under the config
-// directory at <config dir>/flavors. The directory is not required to exist.
-func FlavorsDir() (string, error) {
+// ThemesDir returns the themes directory, located under the config
+// directory at <config dir>/themes. The directory is not required to exist.
+func ThemesDir() (string, error) {
 	cfg, err := ConfigDir()
 	if err != nil {
-		return "", fmt.Errorf("flavors dir: %w", err)
+		return "", fmt.Errorf("themes dir: %w", err)
 	}
-	return filepath.Join(cfg, "flavors"), nil
+	return filepath.Join(cfg, "themes"), nil
 }
 
 // DataDir returns the barista data directory: $XDG_DATA_HOME/barista, falling

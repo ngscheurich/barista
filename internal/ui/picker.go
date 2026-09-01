@@ -1,6 +1,6 @@
 // Package ui holds Barista's interactive surfaces. Today that is the
 // picker: a huh select presented when `barista apply` is invoked with no
-// flavor argument.
+// theme argument.
 package ui
 
 import (
@@ -21,16 +21,16 @@ type Option struct {
 }
 
 // pickTitle is the picker's one line of framing text. It pairs with the
-// numbered labels — a screen reader gets the word "flavor" in the title,
+// numbered labels — a screen reader gets the word "theme" in the title,
 // not just a bare list.
-const pickTitle = "Choose a flavor"
+const pickTitle = "Choose a theme"
 
-// pickerTheme is Base16 with the form chrome stripped: the bordered,
+// pickerStyle is Base16 with the form chrome stripped: the bordered,
 // padded box becomes plain inline text — title, rows, help footer —
 // rendered where the cursor sits and erased on completion, never a
 // screen takeover. The colors stay the named 16-color ANSI indices, so
 // the picker wears the user's live terminal palette.
-func pickerTheme(isDark bool) *huh.Styles {
+func pickerStyle(isDark bool) *huh.Styles {
 	t := huh.ThemeBase16(isDark)
 	t.Focused.Base = lipgloss.NewStyle()
 	t.Blurred.Base = lipgloss.NewStyle()
@@ -66,13 +66,13 @@ func Pick(out io.Writer, in io.Reader, opts []Option, accessible bool) (string, 
 				Value(&choice),
 		),
 	).
-		WithTheme(huh.ThemeFunc(pickerTheme)).
+		WithTheme(huh.ThemeFunc(pickerStyle)).
 		WithAccessible(accessible).
 		WithInput(in).
 		WithOutput(out)
 
 	if err := form.Run(); err != nil {
-		return "", fmt.Errorf("pick flavor: %w", err)
+		return "", fmt.Errorf("pick theme: %w", err)
 	}
 	return choice, nil
 }

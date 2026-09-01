@@ -14,8 +14,7 @@ import (
 // so a rendered template makes it obvious which field landed where.
 func sampleFlavor() flavor.Flavor {
 	return flavor.Flavor{
-		Name:    "Mocha",
-		Dirname: "mocha",
+		Name: "Mocha",
 		Palette: flavor.Palette{
 			Rosewater: "rosewater-val",
 			Flamingo:  "flamingo-val",
@@ -109,8 +108,8 @@ func TestRenderExposesAll26Colors(t *testing.T) {
 
 // An unknown template variable is a hard error rather than a silent empty
 // string, so a typo in a recipe template (e.g. {{palette.raosewater}})
-// surfaces instead of writing a broken theme file. cbroglie/mustache names
-// the offending variable in the error.
+// surfaces instead of writing broken output. cbroglie/mustache names the
+// offending variable in the error.
 func TestRenderUnknownVariableFails(t *testing.T) {
 	_, err := template.Render("[{{palette.nonexistent}}]", sampleFlavor())
 

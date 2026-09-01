@@ -1,4 +1,4 @@
-// Command barista serves up a new flavor for your terminal apps.
+// Command barista serves up a new theme for your terminal apps.
 //
 // main is intentionally tiny: it builds the cobra command tree from internal/cli
 // and executes it against the program context. All command logic lives in

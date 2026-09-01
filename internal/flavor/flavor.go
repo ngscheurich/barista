@@ -1,25 +1,19 @@
-// Package flavor defines the Flavor domain type and its loading from disk.
+// Package flavor defines the Flavor domain type and its decoding from
+// flavor.toml content.
 //
-// A Flavor is a named collection of 26 Catppuccin colors (a Palette) read
-// from a flavor.toml file under the flavors directory. The on-disk TOML
-// shape is decoded into an unexported mirror struct so adding a TOML field
-// later does not force the exported domain type to change shape in lockstep.
+// A Flavor is a named Catppuccin palette variant: a Name plus a Palette of
+// the 26 colors. flavor.toml is the on-disk serialization of a Flavor; the
+// Theme is the container that pairs a Flavor with the per-application
+// templates that render it. The on-disk TOML shape is decoded into an
+// unexported mirror struct so adding a TOML field later does not force
+// the exported domain type to change shape in lockstep.
 package flavor
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 )
-
-// ErrNotFound is returned when a flavor's flavor.toml is missing. Callers
-// distinguish missing-file from parse failures via errors.Is.
-var ErrNotFound = errors.New("flavor not found")
 
 // Palette is the 26 Catppuccin color values inside a Flavor.
 type Palette struct {
@@ -51,19 +45,18 @@ type Palette struct {
 	Crust     string
 }
 
-// Flavor is a named collection of colors that maps to the Catppuccin palette
-// spec. Dirname is the on-disk directory name the flavor was loaded from;
-// Name is the human-facing name field from flavor.toml.
+// Flavor is a named Catppuccin palette variant: a Name plus a Palette of
+// the 26 colors. This is the same unit Catppuccin calls a flavor; Barista
+// renders it through per-application templates grouped into a Theme.
 type Flavor struct {
 	Name    string
-	Dirname string
 	Palette Palette
 }
 
 // AsMap exposes the 26 Catppuccin colors keyed by the snake_case names that
 // templates reference, so a Mustache context can offer {{palette.rosewater}}
 // and the rest. This is the single enumeration of the color list for
-// rendering; the only other site is the paletteFile decode tags in Load.
+// rendering; the only other site is the paletteFile decode tags in Parse.
 func (p Palette) AsMap() map[string]string {
 	return map[string]string{
 		"rosewater": p.Rosewater,
@@ -95,56 +88,22 @@ func (p Palette) AsMap() map[string]string {
 	}
 }
 
-// List enumerates the flavors directory, returning every Flavor that loads,
-// sorted by Name. Entries that are not flavors (plain files, directories
-// without a flavor.toml) and flavors whose flavor.toml fails to load are
-// skipped: they are not available, and `apply <dirname>` reports their
-// errors when invoked directly. A flavors directory that cannot be read is
-// an error.
-func List(flavorsDir string) ([]Flavor, error) {
-	entries, err := os.ReadDir(flavorsDir)
-	if err != nil {
-		return nil, fmt.Errorf("list flavors %s: %w", flavorsDir, err)
-	}
-	var flavors []Flavor
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		f, err := Load(flavorsDir, e.Name())
-		if err != nil {
-			continue
-		}
-		flavors = append(flavors, f)
-	}
-	slices.SortFunc(flavors, func(a, b Flavor) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-	return flavors, nil
-}
-
-// Load reads and parses the flavor named dirname from the flavors directory,
-// returning a Flavor ready to be rendered against a template.
-func Load(flavorsDir, dirname string) (Flavor, error) {
-	p := filepath.Join(flavorsDir, dirname, "flavor.toml")
-	raw, err := os.ReadFile(p)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, ErrNotFound)
-		}
-		return Flavor{}, fmt.Errorf("load flavor %s: %w", dirname, err)
-	}
-
+// Parse decodes flavor.toml content into a Flavor, enforcing that the
+// name and all 26 colors are present. BurntSushi/toml leaves missing keys
+// as zero values rather than erroring, so a flavor.toml missing a color
+// would otherwise decode to an empty string and render silently; the spec
+// requires a missing color to fail the load, so required-ness is enforced
+// here.
+func Parse(raw []byte) (Flavor, error) {
 	var f flavorFile
 	if err := toml.Unmarshal(raw, &f); err != nil {
-		return Flavor{}, fmt.Errorf("parse flavor %s: %w", dirname, err)
+		return Flavor{}, fmt.Errorf("parse flavor: %w", err)
 	}
 	if missing := missingFields(f); missing != "" {
-		return Flavor{}, fmt.Errorf("parse flavor %s: missing required field %s", dirname, missing)
+		return Flavor{}, fmt.Errorf("parse flavor: missing required field %s", missing)
 	}
 	return Flavor{
-		Name:    f.Name,
-		Dirname: dirname,
+		Name: f.Name,
 		// Tags are ignored for struct conversion, so the untagged Palette
 		// is built from the tagged paletteFile in one move.
 		Palette: Palette(f.Palette),
@@ -189,10 +148,6 @@ type paletteFile struct {
 
 // missingFields returns the name of the first required field that is
 // absent from the decoded file, or the empty string if all are present.
-// BurntSushi/toml leaves missing keys as zero values rather than
-// erroring, so a flavor.toml missing a color would otherwise decode to
-// an empty string and render silently; the spec requires a missing color
-// to fail the load, so required-ness is enforced here.
 func missingFields(f flavorFile) string {
 	if f.Name == "" {
 		return "name"

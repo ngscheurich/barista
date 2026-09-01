@@ -1,7 +1,8 @@
 // Package ghostty implements the recipe for theming and reloading the
-// Ghostty terminal: locate ghostty.mustache under the flavor's directory,
-// render it against the flavor, write the result to <data dir>/ghostty,
-// and send SIGUSR2 to the running Ghostty process to trigger a reload.
+// Ghostty terminal: locate ghostty.mustache under the theme's directory,
+// render it against the theme's Flavor, write the output to
+// <data dir>/ghostty, and send SIGUSR2 to the running Ghostty process to
+// trigger a reload.
 package ghostty
 
 import (
@@ -14,16 +15,16 @@ import (
 
 	"charm.land/log/v2"
 
-	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/template"
+	"github.com/ngscheurich/barista/internal/theme"
 )
 
-// templateName is the Mustache file a flavor directory carries for
-// Ghostty; the recipe looks for it under <flavorsDir>/<flavor.Dirname>.
+// templateName is the Mustache file a theme directory carries for
+// Ghostty; the recipe looks for it under <themesDir>/<theme.Dirname>.
 const templateName = "ghostty.mustache"
 
-// outputName is the file the rendered theme is written to, under the
+// outputName is the file the rendered output is written to, under the
 // barista data directory.
 const outputName = "ghostty"
 
@@ -43,23 +44,23 @@ var Kill = func(pid string) *exec.Cmd {
 
 // Recipe is the Ghostty recipe: it carries the directories it resolves
 // templates and output from and runs the locate-render-write-reload
-// procedure against a Flavor.
+// procedure against a Theme.
 type Recipe struct {
-	flavorsDir string
-	dataDir    string
+	themesDir string
+	dataDir   string
 }
 
-// New builds a Ghostty recipe that reads templates from flavorsDir and
-// writes themes under dataDir.
-func New(flavorsDir, dataDir string) *Recipe {
-	return &Recipe{flavorsDir: flavorsDir, dataDir: dataDir}
+// New builds a Ghostty recipe that reads templates from themesDir and
+// writes output under dataDir.
+func New(themesDir, dataDir string) *Recipe {
+	return &Recipe{themesDir: themesDir, dataDir: dataDir}
 }
 
-// Run renders the Ghostty template against f, writes the theme file, and
-// reloads Ghostty. A failure at any step is wrapped with this layer's
-// role prefix; the orchestrator aggregates errors across recipes.
-func (r *Recipe) Run(f flavor.Flavor) error {
-	tmplPath := filepath.Join(r.flavorsDir, f.Dirname, templateName)
+// Run renders the Ghostty template against t.Flavor, writes the output
+// file, and reloads Ghostty. A failure at any step is wrapped with this
+// layer's role prefix; the orchestrator aggregates errors across recipes.
+func (r *Recipe) Run(t theme.Theme) error {
+	tmplPath := filepath.Join(r.themesDir, t.Dirname, templateName)
 	log.Info("Locating template", "app", "ghostty", "path", tmplPath)
 	raw, err := os.ReadFile(tmplPath)
 	if err != nil {
@@ -72,15 +73,15 @@ func (r *Recipe) Run(f flavor.Flavor) error {
 	log.Info("Reading template", "app", "ghostty", "path", tmplPath)
 
 	log.Info("Rendering template", "app", "ghostty")
-	rendered, err := template.Render(string(raw), f)
+	rendered, err := template.Render(string(raw), t.Flavor)
 	if err != nil {
 		return fmt.Errorf("ghostty: %w", err)
 	}
 
 	outPath := filepath.Join(r.dataDir, outputName)
-	log.Info("Writing theme", "app", "ghostty", "path", outPath)
+	log.Info("Writing output", "app", "ghostty", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
-		return fmt.Errorf("ghostty: write theme %s: %w", outPath, err)
+		return fmt.Errorf("ghostty: write output %s: %w", outPath, err)
 	}
 
 	if err := reload(); err != nil {

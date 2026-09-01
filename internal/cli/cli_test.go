@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// apply <flavor> with a real flavor and every template writes each
-// recipe's output file and prints the served-up block: a header with the
-// flavor's Name followed by a ✓ row per app that applied.
-func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
+// apply <theme> with a real theme and every template writes each
+// recipe's output and prints the served-up block: a header with the
+// theme's name followed by a ✓ row per app that applied.
+func TestApplyServesUpThemeAndWritesAllOutputs(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 
 	root, out, _ := newRoot([]string{"apply", "catppuccin-mocha"})
 
@@ -32,7 +32,7 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "name = Catppuccin Mocha\nbase = #1e1e2e", string(gotGhostty))
 
-	gotNvim, err := os.ReadFile(filepath.Join(dataDir, "barista", "nvim", "lua", "flavor.lua"))
+	gotNvim, err := os.ReadFile(filepath.Join(dataDir, "barista", "nvim", "lua", "barista.lua"))
 	require.NoError(t, err)
 	assert.Equal(t, "local name = Catppuccin Mocha", string(gotNvim))
 
@@ -41,10 +41,10 @@ func TestApplyServesUpFlavorAndWritesAllThemes(t *testing.T) {
 	assert.Equal(t, "name = Catppuccin Mocha", string(gotZellij))
 }
 
-// apply prints the flavor's Name, not the dirname.
+// apply prints the theme's name, not the dirname.
 func TestApplyUsesNameNotDirname(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 
 	root, out, _ := newRoot([]string{"apply", "catppuccin-mocha"})
 
@@ -56,7 +56,7 @@ func TestApplyUsesNameNotDirname(t *testing.T) {
 // apply respects a custom icon from config.toml.
 func TestApplyCustomIcon(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 	require.NoError(t, os.WriteFile(
 		filepath.Join(configDir, "barista", "config.toml"),
 		[]byte("icon = \"🍵\""),
@@ -70,17 +70,17 @@ func TestApplyCustomIcon(t *testing.T) {
 	assert.NotContains(t, out.String(), "☕ Served up")
 }
 
-// A flavor that carries only some templates: the apps with templates
+// A theme that carries only some templates: the apps with templates
 // apply (✓); the apps without templates are skipped (•), not errors, and
 // the run exits zero. The served-up list always names every configured app.
 func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	// Write the flavor with only the Ghostty template; fzf, Neovim, and
+	// Write the theme with only the Ghostty template; fzf, Neovim, and
 	// Zellij templates are absent, so those recipes are skipped (•).
-	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
-	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
+	themeDir := filepath.Join(configDir, "barista", "themes", "catppuccin-mocha")
+	require.NoError(t, os.MkdirAll(themeDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
 
 	root, out, _ := newRoot([]string{"apply", "catppuccin-mocha"})
 
@@ -92,12 +92,12 @@ func TestApplyMissingTemplateSkipsNotErrors(t *testing.T) {
 	assert.Contains(t, out.String(), "  • Neovim\n")
 	assert.Contains(t, out.String(), "  • Zellij\n")
 
-	// Ghostty still wrote its theme.
+	// Ghostty still wrote its output.
 	assert.FileExists(t, filepath.Join(dataDir, "barista", "ghostty"))
 }
 
-// A missing flavor surfaces an error mentioning the dirname.
-func TestApplyMissingFlavorFails(t *testing.T) {
+// A missing theme surfaces an error mentioning the dirname.
+func TestApplyMissingThemeFails(t *testing.T) {
 	useTempDirs(t)
 
 	root, _, _ := newRoot([]string{"apply", "nope"})
@@ -118,7 +118,7 @@ func TestRootHelpHasShortDescription(t *testing.T) {
 	root, out, _ := newRoot([]string{"--help"})
 
 	assert.NoError(t, root.Execute())
-	assert.Contains(t, out.String(), "Serves up a new flavor for your terminal apps.")
+	assert.Contains(t, out.String(), "Serves up a new theme for your terminal apps.")
 }
 
 func TestRootNoArgsPrintsHelp(t *testing.T) {
@@ -130,36 +130,36 @@ func TestRootNoArgsPrintsHelp(t *testing.T) {
 }
 
 // apply -v logs each recipe step to stderr, including the input files
-// read, output files written, and reload actions performed.
+// read, output written, and reload actions performed.
 func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 
 	root, _, errOut := newRoot([]string{"apply", "-v", "catppuccin-mocha"})
 
 	require.NoError(t, root.Execute())
 
 	got := errOut.String()
-	flavorsDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
+	themesDir := filepath.Join(configDir, "barista", "themes", "catppuccin-mocha")
 
 	// fzf: template read, render, env var read, merge, fish.
-	assert.Contains(t, got, filepath.Join(flavorsDir, "fzf.mustache"))
+	assert.Contains(t, got, filepath.Join(themesDir, "fzf.mustache"))
 	assert.Contains(t, got, "Read existing env var")
 	assert.Contains(t, got, "Setting env var via fish")
 
-	// Ghostty: template read, theme write, reload (pgrep no-op in tests).
-	assert.Contains(t, got, filepath.Join(flavorsDir, "ghostty.mustache"))
+	// Ghostty: template read, output write, reload (pgrep no-op in tests).
+	assert.Contains(t, got, filepath.Join(themesDir, "ghostty.mustache"))
 	assert.Contains(t, got, filepath.Join(dataDir, "barista", "ghostty"))
 	assert.Contains(t, got, "Discovering ghostty pid")
 	assert.Contains(t, got, "reload skipped")
 
-	// Neovim: template read, dir create, theme write, reload.
-	assert.Contains(t, got, filepath.Join(flavorsDir, "neovim.lua.mustache"))
-	assert.Contains(t, got, filepath.Join(dataDir, "barista", "nvim", "lua", "flavor.lua"))
+	// Neovim: template read, dir create, output write, reload.
+	assert.Contains(t, got, filepath.Join(themesDir, "neovim.lua.mustache"))
+	assert.Contains(t, got, filepath.Join(dataDir, "barista", "nvim", "lua", "barista.lua"))
 	assert.Contains(t, got, "Scanning neovim runtime directory")
 
-	// Zellij: template read, dir create, theme write, config touch.
-	assert.Contains(t, got, filepath.Join(flavorsDir, "zellij.kdl.mustache"))
+	// Zellij: template read, dir create, output write, config touch.
+	assert.Contains(t, got, filepath.Join(themesDir, "zellij.kdl.mustache"))
 	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "themes", "barista.kdl"))
 	assert.Contains(t, got, "Touching config file")
 	assert.Contains(t, got, filepath.Join(configDir, "barista", "zellij", "config.kdl"))
@@ -168,25 +168,25 @@ func TestApplyVerboseLogsRecipeSteps(t *testing.T) {
 // apply --verbose works as the long form of -v.
 func TestApplyVerboseLongFlagWorks(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 
 	root, _, errOut := newRoot([]string{"apply", "--verbose", "catppuccin-mocha"})
 
 	require.NoError(t, root.Execute())
 	assert.Contains(t, errOut.String(), "Reading template")
-	assert.Contains(t, errOut.String(), "Writing theme")
+	assert.Contains(t, errOut.String(), "Writing output")
 }
 
 // apply without -v emits no per-step logs to stderr.
 func TestApplyNonVerboseOmitsLogs(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 
 	root, _, errOut := newRoot([]string{"apply", "catppuccin-mocha"})
 
 	require.NoError(t, root.Execute())
 	assert.NotContains(t, errOut.String(), "Reading template")
-	assert.NotContains(t, errOut.String(), "Writing theme")
+	assert.NotContains(t, errOut.String(), "Writing output")
 }
 
 // apply -v logs steps only for applied apps; skipped apps log the
@@ -195,10 +195,10 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 	configDir, _ := useTempDirs(t)
 	// Only the Ghostty template is present; fzf, Neovim, and Zellij are
 	// skipped and should log the locate + skip but no render/write lines.
-	flavorDir := filepath.Join(configDir, "barista", "flavors", "catppuccin-mocha")
-	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
+	themeDir := filepath.Join(configDir, "barista", "themes", "catppuccin-mocha")
+	require.NoError(t, os.MkdirAll(themeDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "flavor.toml"), []byte(fullFlavorTOML), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "ghostty.mustache"), []byte("name = {{name}}"), 0o644))
 
 	root, _, errOut := newRoot([]string{"apply", "-v", "catppuccin-mocha"})
 
@@ -207,7 +207,7 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 
 	// Ghostty applied: its render/write lines are present.
 	assert.Contains(t, got, "Rendering template")
-	assert.Contains(t, got, "Writing theme")
+	assert.Contains(t, got, "Writing output")
 	assert.Contains(t, got, "Template not found; skipping")
 	assert.NotContains(t, got, "Setting env var via fish")
 	// Neovim skipped: no render line.
@@ -217,29 +217,29 @@ func TestApplyVerboseSkipsLogsForSkippedApps(t *testing.T) {
 }
 
 // apply with no argument and a non-terminal stdin fails with a plain
-// list of the available flavors' dirnames — the scripted and
+// list of the available themes' dirnames — the scripted and
 // screen-reader surface — instead of opening a picker it cannot run.
 // The dirnames are what the user would type to retry.
-func TestApplyNoArgNonTerminalListsFlavors(t *testing.T) {
+func TestApplyNoArgNonTerminalListsThemes(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
-	writeFlavor(t, configDir, "catppuccin-latte")
+	writeTheme(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-latte")
 
 	root, _, _ := newRoot([]string{"apply"})
 
 	err := root.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no flavor given")
+	assert.Contains(t, err.Error(), "no theme given")
 	assert.Contains(t, err.Error(), "catppuccin-mocha")
 	assert.Contains(t, err.Error(), "catppuccin-latte")
 }
 
 // apply with no argument and BARISTA_ACCESSIBLE set runs the picker in
-// accessible mode against stdin, so piping a choice applies that flavor
+// accessible mode against stdin, so piping a choice applies that theme
 // end-to-end through every recipe.
 func TestApplyNoArgAccessibleAppliesChoice(t *testing.T) {
 	configDir, dataDir := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-mocha")
 	t.Setenv("BARISTA_ACCESSIBLE", "1")
 
 	root, out, _ := newRoot([]string{"apply"})
@@ -253,25 +253,25 @@ func TestApplyNoArgAccessibleAppliesChoice(t *testing.T) {
 	assert.Equal(t, "name = Catppuccin Mocha\nbase = #1e1e2e", string(gotGhostty))
 }
 
-// apply with no argument and no flavors installed fails before any
-// picker opens, naming the directory where flavors would live.
-func TestApplyNoArgNoFlavors(t *testing.T) {
+// apply with no argument and no themes installed fails before any
+// picker opens, naming the directory where themes would live.
+func TestApplyNoArgNoThemes(t *testing.T) {
 	useTempDirs(t)
 
 	root, _, _ := newRoot([]string{"apply"})
 
 	err := root.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no flavors found")
+	assert.Contains(t, err.Error(), "no themes found")
 }
 
-// Two flavors sharing a Name (writeFlavor's TOML has a fixed name) get
-// their dirnames as picker labels, so the rows stay distinguishable;
-// piping the row number still applies the right flavor.
+// Two themes sharing a Flavor name (writeTheme's TOML has a fixed name)
+// get their dirnames as picker labels, so the rows stay distinguishable;
+// piping the row number still applies the right theme.
 func TestApplyNoArgAccessibleDisambiguatesSharedNames(t *testing.T) {
 	configDir, _ := useTempDirs(t)
-	writeFlavor(t, configDir, "catppuccin-mocha")
-	writeFlavor(t, configDir, "catppuccin-latte")
+	writeTheme(t, configDir, "catppuccin-mocha")
+	writeTheme(t, configDir, "catppuccin-latte")
 	t.Setenv("BARISTA_ACCESSIBLE", "1")
 
 	root, out, _ := newRoot([]string{"apply"})

@@ -13,28 +13,31 @@ import (
 	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/fzf"
+	"github.com/ngscheurich/barista/internal/theme"
 )
 
-// sampleFlavor carries distinct palette values so the rendered output
-// makes it obvious which field landed where.
-func sampleFlavor() flavor.Flavor {
-	return flavor.Flavor{
-		Name:    "Catppuccin Mocha",
+// sampleTheme carries a Flavor with a distinct palette value so the
+// rendered output makes it obvious which field landed where.
+func sampleTheme() theme.Theme {
+	return theme.Theme{
 		Dirname: "mocha",
-		Palette: flavor.Palette{
-			Mantle: "#11111b",
+		Flavor: flavor.Flavor{
+			Name: "Catppuccin Mocha",
+			Palette: flavor.Palette{
+				Mantle: "#11111b",
+			},
 		},
 	}
 }
 
-// writeFlavorDir creates a flavors dir containing <dirname>/fzf.mustache
-// and returns the flavors dir path.
-func writeFlavorDir(t *testing.T, dirname, tmpl string) string {
+// writeThemeDir creates a themes dir containing <dirname>/fzf.mustache
+// and returns the themes dir path.
+func writeThemeDir(t *testing.T, dirname, tmpl string) string {
 	t.Helper()
 	dir := t.TempDir()
-	flavorDir := filepath.Join(dir, dirname)
-	require.NoError(t, os.MkdirAll(flavorDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(flavorDir, "fzf.mustache"), []byte(tmpl), 0o644))
+	themeDir := filepath.Join(dir, dirname)
+	require.NoError(t, os.MkdirAll(themeDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(themeDir, "fzf.mustache"), []byte(tmpl), 0o644))
 	return dir
 }
 
@@ -64,12 +67,12 @@ func fakeFishCapturing(t *testing.T) *string {
 // Run renders the template, replaces color flags in the existing env
 // var, and runs fish to set the variable.
 func TestRunSetsEnvVarViaFish(t *testing.T) {
-	flavorsDir := writeFlavorDir(t, "mocha", "--color=bg:{{palette.mantle}}\n")
+	themesDir := writeThemeDir(t, "mocha", "--color=bg:{{palette.mantle}}\n")
 	t.Setenv("FZF_DEFAULT_OPTS", "--layout=inline --color=bg:#000000")
 	fakeFish(t)
 
-	r := fzf.New(flavorsDir)
-	err := r.Run(sampleFlavor())
+	r := fzf.New(themesDir)
+	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
 }
@@ -77,13 +80,13 @@ func TestRunSetsEnvVarViaFish(t *testing.T) {
 // Run passes the merged value (theme colors replacing existing colors)
 // to fish.
 func TestRunPassesMergedValueToFish(t *testing.T) {
-	flavorsDir := writeFlavorDir(t, "mocha",
+	themesDir := writeThemeDir(t, "mocha",
 		"--color=bg:{{palette.mantle}}\n--color=fg:#fefefe\n")
 	t.Setenv("FZF_DEFAULT_OPTS", "--layout=inline --color=bg:#000000 --info=true")
 	captured := fakeFishCapturing(t)
 
-	r := fzf.New(flavorsDir)
-	err := r.Run(sampleFlavor())
+	r := fzf.New(themesDir)
+	err := r.Run(sampleTheme())
 
 	require.NoError(t, err)
 	assert.Equal(t,
@@ -94,11 +97,11 @@ func TestRunPassesMergedValueToFish(t *testing.T) {
 
 // A missing template is not-applicable rather than a failure.
 func TestRunMissingTemplateIsNotApplicable(t *testing.T) {
-	flavorsDir := t.TempDir()
+	themesDir := t.TempDir()
 	fakeFish(t)
 
-	r := fzf.New(flavorsDir)
-	err := r.Run(sampleFlavor())
+	r := fzf.New(themesDir)
+	err := r.Run(sampleTheme())
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, recipe.ErrNotApplicable),

@@ -15,13 +15,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ngscheurich/barista/internal/config"
-	"github.com/ngscheurich/barista/internal/flavor"
 	"github.com/ngscheurich/barista/internal/paths"
 	"github.com/ngscheurich/barista/internal/recipe"
 	"github.com/ngscheurich/barista/internal/recipe/fzf"
 	"github.com/ngscheurich/barista/internal/recipe/ghostty"
 	"github.com/ngscheurich/barista/internal/recipe/neovim"
 	"github.com/ngscheurich/barista/internal/recipe/zellij"
+	"github.com/ngscheurich/barista/internal/theme"
 	"github.com/ngscheurich/barista/internal/ui"
 )
 
@@ -34,8 +34,8 @@ var ErrAborted = huh.ErrUserAborted
 func newApplyCmd() *cobra.Command {
 	var verbose bool
 	cmd := &cobra.Command{
-		Use:   "apply [flavor]",
-		Short: "Apply a flavor to all configured applications",
+		Use:   "apply [theme]",
+		Short: "Apply a theme to all configured applications",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dirname := ""
@@ -43,7 +43,7 @@ func newApplyCmd() *cobra.Command {
 				dirname = args[0]
 			} else {
 				var err error
-				dirname, err = resolveFlavor(cmd)
+				dirname, err = resolveTheme(cmd)
 				if err != nil {
 					return err
 				}
@@ -56,63 +56,63 @@ func newApplyCmd() *cobra.Command {
 	return cmd
 }
 
-// resolveFlavor decides which flavor apply serves when no argument was
+// resolveTheme decides which theme apply serves when no argument was
 // given: the picker's choice. The picker opens only when stdin is a
 // terminal or accessible mode is requested via BARISTA_ACCESSIBLE;
-// otherwise the error lists the available flavors' dirnames in plain
+// otherwise the error lists the available themes' dirnames in plain
 // text — the surface scripts and screen readers consume. An empty
-// flavors directory never reaches the picker.
-func resolveFlavor(cmd *cobra.Command) (string, error) {
-	flavorsDir, err := paths.FlavorsDir()
+// themes directory never reaches the picker.
+func resolveTheme(cmd *cobra.Command) (string, error) {
+	themesDir, err := paths.ThemesDir()
 	if err != nil {
 		return "", fmt.Errorf("apply: %w", err)
 	}
-	flavors, err := flavor.List(flavorsDir)
+	themes, err := theme.List(themesDir)
 	if err != nil {
-		// A flavors directory that does not exist yet is the same
+		// A themes directory that does not exist yet is the same
 		// situation as an empty one: nothing to pick from.
 		if errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("no flavors found in %s", flavorsDir)
+			return "", fmt.Errorf("no themes found in %s", themesDir)
 		}
 		return "", fmt.Errorf("apply: %w", err)
 	}
-	if len(flavors) == 0 {
-		return "", fmt.Errorf("no flavors found in %s", flavorsDir)
+	if len(themes) == 0 {
+		return "", fmt.Errorf("no themes found in %s", themesDir)
 	}
 
 	accessible := os.Getenv("BARISTA_ACCESSIBLE") != ""
 	in := cmd.InOrStdin()
 	if !accessible && !isTerminal(in) {
-		names := make([]string, len(flavors))
-		for i, f := range flavors {
-			names[i] = f.Dirname
+		names := make([]string, len(themes))
+		for i, t := range themes {
+			names[i] = t.Dirname
 		}
-		return "", fmt.Errorf("no flavor given; available: %s", strings.Join(names, ", "))
+		return "", fmt.Errorf("no theme given; available: %s", strings.Join(names, ", "))
 	}
 
-	choice, err := ui.Pick(cmd.OutOrStdout(), in, pickerOptions(flavors), accessible)
+	choice, err := ui.Pick(cmd.OutOrStdout(), in, pickerOptions(themes), accessible)
 	if err != nil {
 		return "", fmt.Errorf("apply: %w", err)
 	}
 	return choice, nil
 }
 
-// pickerOptions maps flavors to picker rows: each flavor's Name, with
-// its Dirname as the label when two flavors share a Name, so no two
+// pickerOptions maps themes to picker rows: each theme's Flavor name, with
+// its Dirname as the label when two themes share a Flavor name, so no two
 // rows are indistinguishable. The chosen row's Value is the Dirname
 // apply takes as its argument.
-func pickerOptions(flavors []flavor.Flavor) []ui.Option {
+func pickerOptions(themes []theme.Theme) []ui.Option {
 	counts := make(map[string]int)
-	for _, f := range flavors {
-		counts[f.Name]++
+	for _, t := range themes {
+		counts[t.Flavor.Name]++
 	}
-	opts := make([]ui.Option, len(flavors))
-	for i, f := range flavors {
-		label := f.Name
-		if counts[f.Name] > 1 {
-			label = f.Dirname
+	opts := make([]ui.Option, len(themes))
+	for i, t := range themes {
+		label := t.Flavor.Name
+		if counts[t.Flavor.Name] > 1 {
+			label = t.Dirname
 		}
-		opts[i] = ui.Option{Label: label, Value: f.Dirname}
+		opts[i] = ui.Option{Label: label, Value: t.Dirname}
 	}
 	return opts
 }
@@ -139,20 +139,20 @@ func runApply(cmd *cobra.Command, dirname string, verbose bool) error {
 	return apply(cmd.OutOrStdout(), dirname)
 }
 
-// apply runs the full theming pipeline for one flavor: ensure the data
-// dir, load the flavor, run every recipe, and print the served-up list
-// marking each app ✓ (applied) or • (skipped, because the flavor carries
+// apply runs the full theming pipeline for one theme: ensure the data
+// dir, load the theme, run every recipe, and print the served-up list
+// marking each app ✓ (applied) or • (skipped, because the theme carries
 // no template for it). Pre-recipe failures (missing data dir, missing
-// flavor) short-circuit and return. A recipe that returns
+// theme) short-circuit and return. A recipe that returns
 // recipe.ErrNotApplicable is a skip, not a failure; every other recipe
 // error is aggregated via errors.Join so one app's failure does not hide
 // another's. The served-up list always names every configured app; the
 // caller is responsible for printing the returned error to stderr.
 //
-// Per-step logs (template reads, theme writes, reload actions) are emitted
-// by each recipe via the package-level charmbracelet/log default logger,
-// whose level and output are configured by runApply from the --verbose
-// flag.
+// Per-step logs (template reads, output writes, reload actions) are
+// emitted by each recipe via the package-level charmbracelet/log default
+// logger, whose level and output are configured by runApply from the
+// --verbose flag.
 func apply(out io.Writer, dirname string) error {
 	dataDir, err := paths.EnsureDataDir()
 	if err != nil {
@@ -164,12 +164,12 @@ func apply(out io.Writer, dirname string) error {
 		return fmt.Errorf("apply %s: %w", dirname, err)
 	}
 
-	flavorsDir, err := paths.FlavorsDir()
+	themesDir, err := paths.ThemesDir()
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", dirname, err)
 	}
 
-	f, err := flavor.Load(flavorsDir, dirname)
+	t, err := theme.Load(themesDir, dirname)
 	if err != nil {
 		return fmt.Errorf("apply %s: %w", dirname, err)
 	}
@@ -186,10 +186,10 @@ func apply(out io.Writer, dirname string) error {
 		name string
 		r    recipe.Recipe
 	}{
-		{name: "fzf", r: fzf.New(flavorsDir)},
-		{name: "Ghostty", r: ghostty.New(flavorsDir, dataDir)},
-		{name: "Neovim", r: neovim.New(flavorsDir, dataDir)},
-		{name: "Zellij", r: zellij.New(flavorsDir, configDir)},
+		{name: "fzf", r: fzf.New(themesDir)},
+		{name: "Ghostty", r: ghostty.New(themesDir, dataDir)},
+		{name: "Neovim", r: neovim.New(themesDir, dataDir)},
+		{name: "Zellij", r: zellij.New(themesDir, configDir)},
 	}
 
 	// Style rendering emits full ANSI; the colorprofile writer is the seam
@@ -206,10 +206,10 @@ func apply(out io.Writer, dirname string) error {
 	skippedStyle := lipgloss.NewStyle().Faint(true)
 	boldStyle := lipgloss.NewStyle().Bold(true)
 
-	fmt.Fprintf(styled, "%s\n\n", boldStyle.Render(fmt.Sprintf("%s Served up %s to:", cfg.Icon, f.Name)))
+	fmt.Fprintf(styled, "%s\n\n", boldStyle.Render(fmt.Sprintf("%s Served up %s to:", cfg.Icon, t.Flavor.Name)))
 	var errs []error
 	for _, a := range apps {
-		err := a.r.Run(f)
+		err := a.r.Run(t)
 		if err == nil {
 			fmt.Fprintf(styled, "  %s %s\n", appliedStyle.Render("✓"), a.name)
 			continue

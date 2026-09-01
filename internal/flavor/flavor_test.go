@@ -1,9 +1,6 @@
 package flavor_test
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,50 +73,42 @@ func wantPalette() flavor.Palette {
 	}
 }
 
-func TestLoad(t *testing.T) {
+// Parse decodes flavor.toml content into a Flavor with Name and Palette.
+func TestParse(t *testing.T) {
 	cases := []struct {
-		name      string
-		toml      string
-		dirname   string
-		want      flavor.Flavor
-		wantErrAs bool // true => expect a parse error (not ErrNotFound)
+		name    string
+		toml    string
+		want    flavor.Flavor
+		wantErr bool
 	}{
 		{
-			name:    "full 26-color palette",
-			toml:    validPaletteTOML,
-			dirname: "catppuccin-mocha",
+			name: "full 26-color palette",
+			toml: validPaletteTOML,
 			want: flavor.Flavor{
 				Name:    "Catppuccin Mocha",
-				Dirname: "catppuccin-mocha",
 				Palette: wantPalette(),
 			},
 		},
 		{
-			name:      "missing color fails parse",
-			toml:      validPaletteTOML[:len(validPaletteTOML)-len("crust = \"#11111b\"\n")],
-			dirname:   "catppuccin-mocha",
-			wantErrAs: true,
+			name:    "missing color fails",
+			toml:    validPaletteTOML[:len(validPaletteTOML)-len("crust = \"#11111b\"\n")],
+			wantErr: true,
 		},
 		{
-			name: "wrong-typed value fails parse",
+			name: "wrong-typed value fails",
 			toml: `name = "Bad"
 [palette]
 rosewater = 123
 `,
-			dirname:   "bad",
-			wantErrAs: true,
+			wantErr: true,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			flavorsDir := writeFlavor(t, tc.dirname, tc.toml)
+			got, err := flavor.Parse([]byte(tc.toml))
 
-			got, err := flavor.Load(flavorsDir, tc.dirname)
-
-			if tc.wantErrAs {
+			if tc.wantErr {
 				require.Error(t, err)
-				assert.NotErrorIs(t, err, flavor.ErrNotFound,
-					"a parse error should not be ErrNotFound; got %v", err)
 				return
 			}
 			require.NoError(t, err)
@@ -128,21 +117,8 @@ rosewater = 123
 	}
 }
 
-// A missing flavor.toml returns an error that wraps ErrNotFound, so callers
-// can distinguish missing-file from parse failures via errors.Is.
-func TestLoadMissingFileWrapsErrNotFound(t *testing.T) {
-	flavorsDir := t.TempDir()
-
-	_, err := flavor.Load(flavorsDir, "nope")
-
-	require.Error(t, err)
-	assert.ErrorIs(t, err, flavor.ErrNotFound)
-	assert.NotErrorIs(t, err, os.ErrNotExist,
-		"ErrNotFound is the domain sentinel, not the raw os error")
-}
-
-// A missing top-level name surfaces as a parse error, not ErrNotFound.
-func TestLoadMissingNameFailsParse(t *testing.T) {
+// A missing top-level name fails parsing with an error naming the field.
+func TestParseMissingNameFails(t *testing.T) {
 	toml := `[palette]
 rosewater = "#f5e0dc"
 flamingo = "#f2cdcd"
@@ -171,71 +147,9 @@ base = "#1e1e2e"
 mantle = "#181825"
 crust = "#11111b"
 `
-	flavorsDir := writeFlavor(t, "noname", toml)
 
-	_, err := flavor.Load(flavorsDir, "noname")
+	_, err := flavor.Parse([]byte(toml))
 
 	require.Error(t, err)
-	assert.NotErrorIs(t, err, flavor.ErrNotFound)
-}
-
-// writeFlavor creates <flavorsDir>/<dirname>/flavor.toml with the given
-// content and returns flavorsDir so Load can be pointed at it.
-func writeFlavor(t *testing.T, dirname, toml string) string {
-	t.Helper()
-	flavorsDir := t.TempDir()
-	dir := filepath.Join(flavorsDir, dirname)
-	require.NoError(t, os.MkdirAll(dir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "flavor.toml"), []byte(toml), 0o644))
-	return flavorsDir
-}
-
-// A compile-time guard that the sentinel is an error value, not a type.
-var _ error = flavor.ErrNotFound
-
-// List enumerates the flavors directory: every subdirectory whose
-// flavor.toml loads becomes a Flavor, sorted by Name. Directories
-// without a flavor.toml, entries that fail to load, and plain files are
-// skipped; a missing flavors directory is an error.
-func TestList(t *testing.T) {
-	dir := t.TempDir()
-	writeFlavorTOML(t, dir, "catppuccin-mocha", validPaletteTOML)
-	latte := strings.Replace(validPaletteTOML, `"Catppuccin Mocha"`, `"Catppuccin Latte"`, 1)
-	writeFlavorTOML(t, dir, "catppuccin-latte", latte)
-
-	// A directory with no flavor.toml is not a flavor.
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "not-a-flavor"), 0o755))
-	// A flavor.toml that fails to load is skipped, not fatal.
-	writeFlavorTOML(t, dir, "broken", "name = \"Broken\"\n")
-	// A plain file among the directories is ignored.
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("hi"), 0o644))
-
-	flavors, err := flavor.List(dir)
-	require.NoError(t, err)
-	assert.Equal(t, []flavor.Flavor{
-		{Name: "Catppuccin Latte", Dirname: "catppuccin-latte", Palette: wantPalette()},
-		{Name: "Catppuccin Mocha", Dirname: "catppuccin-mocha", Palette: wantPalette()},
-	}, flavors)
-}
-
-// An empty flavors directory yields no flavors and no error.
-func TestListEmptyDir(t *testing.T) {
-	flavors, err := flavor.List(t.TempDir())
-	require.NoError(t, err)
-	assert.Empty(t, flavors)
-}
-
-// A flavors directory that cannot be read is an error.
-func TestListMissingDir(t *testing.T) {
-	_, err := flavor.List(filepath.Join(t.TempDir(), "nope"))
-	assert.Error(t, err)
-}
-
-// writeFlavorTOML creates <dir>/<dirname>/flavor.toml with the given
-// contents, making the parent directory first.
-func writeFlavorTOML(t *testing.T, dir, dirname, toml string) {
-	t.Helper()
-	d := filepath.Join(dir, dirname)
-	require.NoError(t, os.MkdirAll(d, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(d, "flavor.toml"), []byte(toml), 0o644))
+	assert.Contains(t, err.Error(), "missing required field name")
 }

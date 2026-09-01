@@ -57,7 +57,7 @@ func RemoteSend(socket, keys string) *exec.Cmd {
 }
 
 // reloadKeys is the keystroke sequence sent to every Neovim instance to
-// reload the Barista flavor plugin, matching the Gleam version's
+// reload the Barista plugin, matching the Gleam version's
 // nvim_send.sh argument.
 const reloadKeys = "<Cmd>lua require('barista')<CR>"
 
