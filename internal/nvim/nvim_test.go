@@ -3,6 +3,7 @@ package nvim_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -80,6 +81,41 @@ func TestRemoteSendCommandShape(t *testing.T) {
 	assert.Equal(t,
 		[]string{"--server", "/tmp/nvim.1.0", "--remote-send", "<Cmd>lua require('barista')<CR>"},
 		cmd.Args[1:])
+}
+
+// Reload discovers Neovim's per-instance socket beneath the fallback
+// runtime directory and asks the instance to discard the cached Barista
+// module, load the newly written artifact, and apply it. A bare require is
+// insufficient because Lua returns the module cached by the initial setup.
+func TestReloadLoadsAndAppliesNewArtifact(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	t.Setenv("TMPDIR", tmp)
+	t.Setenv("USER", "tester")
+
+	socket := filepath.Join(tmp, "nvim.tester", "9Hrtkz", "nvim.41727.0")
+	require.NoError(t, os.MkdirAll(filepath.Dir(socket), 0o755))
+	mustWrite(t, socket)
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o755))
+	argsFile := filepath.Join(tmp, "nvim-args")
+	fakeNvim := filepath.Join(binDir, "nvim")
+	require.NoError(t, os.WriteFile(fakeNvim, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$NVIM_ARGS_FILE\"\n"), 0o755))
+	t.Setenv("NVIM_ARGS_FILE", argsFile)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	require.NoError(t, nvim.Reload())
+
+	rawArgs, err := os.ReadFile(argsFile)
+	require.NoError(t, err)
+	got := strings.Split(strings.TrimSpace(string(rawArgs)), "\n")
+	assert.Equal(t, []string{
+		"--server",
+		socket,
+		"--remote-send",
+		"<Cmd>lua package.loaded['barista'] = nil; require('barista').setup()<CR>",
+	}, got)
 }
 
 func mustWrite(t *testing.T, path string) {

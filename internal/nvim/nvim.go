@@ -56,10 +56,10 @@ func RemoteSend(socket, keys string) *exec.Cmd {
 	return exec.Command("nvim", "--server", socket, "--remote-send", keys)
 }
 
-// reloadKeys is the keystroke sequence sent to every Neovim instance to
-// reload the Barista plugin, matching the Gleam version's
-// nvim_send.sh argument.
-const reloadKeys = "<Cmd>lua require('barista')<CR>"
+// reloadKeys is the keystroke sequence sent to every Neovim instance.
+// Lua's require caches modules, so discard the Barista module loaded at
+// startup before requiring the newly written artifact and applying it.
+const reloadKeys = "<Cmd>lua package.loaded['barista'] = nil; require('barista').setup()<CR>"
 
 // processAlive returns true when pid is a running process.
 // Uses syscall.Kill(pid, 0) which probes without delivering a signal.
