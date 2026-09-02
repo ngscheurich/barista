@@ -2,7 +2,7 @@
 
 A guide to writing idiomatic Go for this codebase, distilled from [Effective Go](https://go.dev/doc/effective_go), the Go team's [Code Review Comments](https://go.dev/wiki/CodeReviewComments), the standard library, and the patterns established by the Bubble Tea / Charm ecosystem (`bubbletea`, `bubbles`, `lipgloss`, `huh`, `glamour`) and the cobra / Kubernetes lineage that shaped most modern CLI tooling.
 
-Barista is a CLI written in Go that reads a theme (a Catppuccin flavor plus per-application Mustache templates), renders the templates against the flavor, writes each application's output, and triggers a reload. There is no server, no RPC, no network boundary — the "boundaries" that shape Barista's Go design are the filesystem (reading themes, writing output) and the child-process calls that reload each application (`pgrep`/`kill`, `nvim --server`, `touch`). A Bubble Tea TUI is a future possibility, not current scope; the TUI section below is forward-looking so the conventions are settled before any TUI code lands.
+Barista is a CLI written in Go that reads a theme (a Catppuccin flavor plus per-application Mustache templates), renders the templates against the flavor, produces each application's effect, and triggers a reload. There is no server, no RPC, no network boundary — the "boundaries" that shape Barista's Go design are the filesystem (reading themes, writing artifacts) and the child-process calls that reload each application (`pgrep`/`kill`, `nvim --server`, `touch`). A Bubble Tea TUI is a future possibility, not current scope; the TUI section below is forward-looking so the conventions are settled before any TUI code lands.
 
 Read §§1–4 before writing your first package. Jump to whichever layer your task touches, then come back to §16 for our local conventions and §17 for the open questions where the ecosystem hasn't converged. When in doubt, prefer stdlib idioms over inventing new ones.
 
@@ -704,7 +704,7 @@ if diff := cmp.Diff(want, got); diff != "" {
 
 ### Golden files
 
-For tests of template output or generated output files, write the expected output to `testdata/<name>.golden` and compare. Add a `-update` flag to regenerate on changes:
+For tests of template rendering or generated artifacts, write the expected output to `testdata/<name>.golden` and compare. Add a `-update` flag to regenerate on changes:
 
 ```go
 var update = flag.Bool("update", false, "update golden files")

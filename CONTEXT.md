@@ -2,7 +2,7 @@
 
 ## What Barista is
 
-Barista takes a **theme** (a Catppuccin flavor plus per-application templates) and **serves** it to terminal applications — rendering the templates into each application's output and triggering a reload in each.
+Barista takes a **theme** (a Catppuccin flavor plus per-application templates) and **serves** it to terminal applications — rendering the templates to produce each application's **effect** and triggering a reload in each.
 
 ## Glossary
 
@@ -10,12 +10,14 @@ Barista takes a **theme** (a Catppuccin flavor plus per-application templates) a
 - **Flavor** — A named Catppuccin palette variant: a name plus the 26 color values. Serialized as `flavor.toml`.
 - **Palette** — The 26 Catppuccin color values (rosewater … crust) inside a Flavor.
 - **Application** — A terminal program Barista can theme. Today: fzf, Ghostty, Neovim, Zellij.
-- **Recipe** — The procedure for one Application: render its template from the Flavor, write the output to the Application's location, and reload the Application.
-- **Template** — A Mustache file (e.g. `ghostty.mustache`) that, given a Flavor as context, produces an Application's output.
+- **Effect** — The change a Recipe makes for its Application. Usually a written file the Application reads (an Artifact); fzf's effect sets `FZF_DEFAULT_OPTS` via a fish universal export and writes nothing.
+- **Artifact** — A file a Recipe writes that an Application reads (Ghostty's `ghostty`, Neovim's `barista.lua`, Zellij's `barista.kdl`). The most common kind of Effect.
+- **Recipe** — The procedure for one Application: render its template from the Flavor, produce the Application's Effect, and reload the Application.
+- **Template** — A Mustache file (e.g. `ghostty.mustache`) that, given a Flavor as context, renders the content of an Application's Effect.
 - **Picker** — The interactive chooser `barista apply` opens when invoked with no theme argument. Lists available Themes by name; serves the one the user chooses. Not available when input is not a terminal, in which case `apply` fails and lists the Themes instead.
 - **config directory** — The root of Barista's user configuration. `$XDG_CONFIG_HOME/barista` (fallback `~/.config/barista`). Not created by Barista; assumed to exist.
 - **themes directory** — Where user-specified themes live. A subset of the config directory: `<config directory>/themes`.
-- **data directory** — Where recipes write their output. `$XDG_DATA_HOME/barista` (fallback `~/.local/share/barista`). Created by Barista on every run.
+- **data directory** — Where recipes write Artifacts. `$XDG_DATA_HOME/barista` (fallback `~/.local/share/barista`). Created by Barista on every run.
 
 ## Implementation
 

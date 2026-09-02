@@ -14,7 +14,7 @@ import (
 )
 
 // sampleTheme carries a Flavor with distinct palette values so the
-// rendered output makes it obvious which field landed where.
+// rendered template makes it obvious which field landed where.
 func sampleTheme() theme.Theme {
 	return theme.Theme{
 		Dirname: "mocha",

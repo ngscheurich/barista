@@ -108,7 +108,7 @@ func TestRenderExposesAll26Colors(t *testing.T) {
 
 // An unknown template variable is a hard error rather than a silent empty
 // string, so a typo in a recipe template (e.g. {{palette.raosewater}})
-// surfaces instead of writing broken output. cbroglie/mustache names the
+// surfaces instead of producing broken content. cbroglie/mustache names the
 // offending variable in the error.
 func TestRenderUnknownVariableFails(t *testing.T) {
 	_, err := template.Render("[{{palette.nonexistent}}]", sampleFlavor())

@@ -23,17 +23,17 @@ import (
 // Neovim; the recipe looks for it under <themesDir>/<theme.Dirname>.
 const templateName = "neovim.lua.mustache"
 
-// pluginDir is the directory the rendered output is written to, under the
+// pluginDir is the directory the rendered artifact is written to, under the
 // barista data directory; it is created if missing.
 const pluginDir = "nvim/lua"
 
-// outputName is the file the rendered output is written to inside
+// artifactName is the file the rendered artifact is written to inside
 // pluginDir. barista.nvim reads this file; renaming it is a coordinated
 // change with that repo.
-const outputName = "barista.lua"
+const artifactName = "barista.lua"
 
 // Recipe is the Neovim recipe: it carries the directories it resolves
-// templates and output from and runs the locate-render-write-reload
+// templates and artifacts from and runs the locate-render-write-reload
 // procedure against a Theme.
 type Recipe struct {
 	themesDir string
@@ -41,7 +41,7 @@ type Recipe struct {
 }
 
 // New builds a Neovim recipe that reads templates from themesDir and
-// writes output under dataDir.
+// writes artifacts under dataDir.
 func New(themesDir, dataDir string) *Recipe {
 	return &Recipe{themesDir: themesDir, dataDir: dataDir}
 }
@@ -75,10 +75,10 @@ func (r *Recipe) Run(t theme.Theme) error {
 		return fmt.Errorf("neovim: create plugin dir %s: %w", outDir, err)
 	}
 
-	outPath := filepath.Join(outDir, outputName)
-	log.Info("Writing output", "app", "neovim", "path", outPath)
+	outPath := filepath.Join(outDir, artifactName)
+	log.Info("Writing artifact", "app", "neovim", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
-		return fmt.Errorf("neovim: write output %s: %w", outPath, err)
+		return fmt.Errorf("neovim: write artifact %s: %w", outPath, err)
 	}
 
 	log.Info("Reloading neovim instances", "app", "neovim")

@@ -25,7 +25,7 @@ import (
 // An unknown template variable is a hard error, not a silent empty
 // string: cbroglie/mustache defaults to the Mustache-spec behaviour of
 // emitting nothing for a miss, which would let a typo in a recipe
-// template ({{palette.raosewater}}) write broken output with no
+// template ({{palette.raosewater}}) produce broken content with no
 // signal. AllowMissingVariables is a package-level switch, so Render
 // flips it off for the whole process on first use. Barista is the binary's
 // only mustache consumer and recipes render sequentially, so the global

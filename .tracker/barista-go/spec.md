@@ -4,7 +4,7 @@ A faithful port of Barista from Gleam/BEAM to Go, preserving observable behavior
 
 ## Scope
 
-**In scope:** a Go binary that reproduces today's `barista <theme>` behavior — load a theme (a flavor plus templates), render and write output for fzf, Ghostty, Neovim, and Zellij, reload each app.
+**In scope:** a Go binary that reproduces today's `barista <theme>` behavior — load a theme (a flavor plus templates), render and produce an effect for fzf, Ghostty, Neovim, and Zellij, reload each app.
 
 **Out of scope (follow-up tickets, not folded in):** checking for an application before applying, skipping applications via CLI flags or config file, only trying applications with an available template, any TUI. These remain on the roadmap after the port lands.
 
@@ -24,7 +24,7 @@ barista apply <theme>
 
 1. **Ensure the data directory exists.** Create `$XDG_DATA_HOME/barista` (fallback `~/.local/share/barista`) with `mkdir -p` semantics. This happens before the theme is loaded. A failure here aborts before any recipe runs.
 2. **Load the theme.** Read `<themes dir>/<theme>/flavor.toml`, parse it as TOML, and build a `Theme` (a `dirname` plus a `Flavor`: the `name` string plus a `Palette` of the 26 Catppuccin colors). A failure here aborts before any recipe runs (there is no flavor to render).
-3. **Run all four recipes** (fzf, Ghostty, Neovim, Zellij), collecting errors rather than stopping at the first. The recipes are independent (each writes its own output and reloads its own app), so one recipe's failure does not block the others.
+3. **Run all four recipes** (fzf, Ghostty, Neovim, Zellij), collecting errors rather than stopping at the first. The recipes are independent (each produces its own effect and reloads its own app), so one recipe's failure does not block the others.
 4. **Report.** On success (no errors), print `☕︎ Served up <name>` (the theme's name, read from the flavor's `name` field, not the dirname). If any recipe errored, print all collected errors to stderr and exit non-zero.
 
 This continue-on-error behavior is a deliberate change from the Gleam version's short-circuit.
@@ -41,9 +41,9 @@ Resolution picks the first candidate in `[primary, fallback]` that exists and is
 
 ### Recipes
 
-Each recipe: locate the template, read it, render it against the theme's flavor, write the output, then reload the app.
+Each recipe: locate the template, read it, render it against the theme's flavor, produce the effect, then reload the app.
 
-| App | Template file | Output | Reload mechanism |
+| App | Template file | Effect | Reload mechanism |
 | --- | --- | --- | --- |
 | fzf | `<themes dir>/<theme>/fzf.mustache` | sets `FZF_DEFAULT_OPTS` (no file) | `fish -c "set -Ux FZF_DEFAULT_OPTS ..."` |
 | Ghostty | `<themes dir>/<theme>/ghostty.mustache` | `<data dir>/ghostty` | `pgrep ghostty` → first pid → `kill -s USR2 <pid>` |
@@ -96,7 +96,7 @@ The `Recipe` interface (single-method, per Go's small-interface idiom):
 
 ```go
 type Recipe interface {
-    Run(t theme.Theme) error  // render template, write output, reload app
+    Run(t theme.Theme) error  // render template, produce effect, reload app
 }
 ```
 

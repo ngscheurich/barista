@@ -2,7 +2,7 @@
 
 Barista takes a theme (a Catppuccin flavor plus one or more application
 templates) and serves it to terminal applications — rendering the
-templates into each app's output and triggering a reload in each.
+templates into each app's effect and triggering a reload in each.
 
 # Themes
 
@@ -86,7 +86,7 @@ cursor-color = #f5e0dc
 ```
 
 Running `barista apply catppuccin-mocha` renders each template against the
-theme's flavor and writes the output to the application's location.
+theme's flavor and produces the application's effect (usually a written file).
 
 Running `barista apply` with no argument opens an interactive picker of
 your available themes. The picker needs a terminal; when its input is
@@ -99,10 +99,10 @@ which is what screen readers need and also works over a pipe.
 
 A recipe tells Barista how to:
 
-1. Render a theme's template into output for a particular application
+1. Render a theme's template into an effect for a particular application
 2. Reload the application after rendering
 
-Recipes write their output to `$XDG_DATA_HOME/barista`, except Zellij,
+Recipes write their artifacts to `$XDG_DATA_HOME/barista`, except Zellij,
 which reads its themes from the user's config directory.
 
 ## Ghostty

@@ -1,6 +1,6 @@
 // Package ghostty implements the recipe for theming and reloading the
 // Ghostty terminal: locate ghostty.mustache under the theme's directory,
-// render it against the theme's Flavor, write the output to
+// render it against the theme's Flavor, write the artifact to
 // <data dir>/ghostty, and send SIGUSR2 to the running Ghostty process to
 // trigger a reload.
 package ghostty
@@ -24,9 +24,9 @@ import (
 // Ghostty; the recipe looks for it under <themesDir>/<theme.Dirname>.
 const templateName = "ghostty.mustache"
 
-// outputName is the file the rendered output is written to, under the
-// barista data directory.
-const outputName = "ghostty"
+// artifactName is the file the rendered artifact is written to, under
+// the barista data directory.
+const artifactName = "ghostty"
 
 // Pgrep constructs the pgrep command used to discover the Ghostty pid.
 // It returns the command without running it, so tests can assert the
@@ -43,7 +43,7 @@ var Kill = func(pid string) *exec.Cmd {
 }
 
 // Recipe is the Ghostty recipe: it carries the directories it resolves
-// templates and output from and runs the locate-render-write-reload
+// templates and artifacts from and runs the locate-render-write-reload
 // procedure against a Theme.
 type Recipe struct {
 	themesDir string
@@ -51,13 +51,13 @@ type Recipe struct {
 }
 
 // New builds a Ghostty recipe that reads templates from themesDir and
-// writes output under dataDir.
+// writes artifacts under dataDir.
 func New(themesDir, dataDir string) *Recipe {
 	return &Recipe{themesDir: themesDir, dataDir: dataDir}
 }
 
-// Run renders the Ghostty template against t.Flavor, writes the output
-// file, and reloads Ghostty. A failure at any step is wrapped with this
+// Run renders the Ghostty template against t.Flavor, writes the artifact,
+// and reloads Ghostty. A failure at any step is wrapped with this
 // layer's role prefix; the orchestrator aggregates errors across recipes.
 func (r *Recipe) Run(t theme.Theme) error {
 	tmplPath := filepath.Join(r.themesDir, t.Dirname, templateName)
@@ -78,10 +78,10 @@ func (r *Recipe) Run(t theme.Theme) error {
 		return fmt.Errorf("ghostty: %w", err)
 	}
 
-	outPath := filepath.Join(r.dataDir, outputName)
-	log.Info("Writing output", "app", "ghostty", "path", outPath)
+	outPath := filepath.Join(r.dataDir, artifactName)
+	log.Info("Writing artifact", "app", "ghostty", "path", outPath)
 	if err := os.WriteFile(outPath, []byte(rendered), 0o644); err != nil {
-		return fmt.Errorf("ghostty: write output %s: %w", outPath, err)
+		return fmt.Errorf("ghostty: write artifact %s: %w", outPath, err)
 	}
 
 	if err := reload(); err != nil {

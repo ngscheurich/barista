@@ -2,7 +2,7 @@
 //
 // A Theme is what barista serves: a Flavor (a named Catppuccin palette
 // variant) plus the per-application templates that render that Flavor
-// into each application's output. On disk a Theme is a directory under
+// into each application's effect. On disk a Theme is a directory under
 // the themes directory containing a flavor.toml (the Flavor) and one
 // template per application.
 package theme
