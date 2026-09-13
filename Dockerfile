@@ -36,6 +36,9 @@ RUN set -eux; \
     mise install; \
     go version
 
-ENV LANG=en_US.UTF-8
+# Set up environment
+ENV LANG=C.UTF-8 \
+    GOCACHE=/root/.cache/go-build \
+    GOMODCACHE=/root/go/pkg/mod
 
 CMD ["bash"]

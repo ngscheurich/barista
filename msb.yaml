@@ -1,14 +1,24 @@
 image: "barista:latest"
+
 workdir: "/workspace"
 shell: "/bin/bash"
+
 secrets:
   OPENROUTER_API_KEY:
     allow: ["openrouter.ai"]
+
 mounts:
   - ".:/workspace"
   - "${HOME}/AGENTS.md:/root/AGENTS.md:ro"
   - "${HOME}/.agents:/root/.agents:ro"
   - "${HOME}/.pi:/root/.pi"
+  - named: go-build-cache
+    target: /root/.cache/go-build
+    create: ensure-exists
+  - named: go-mod-cache
+    target: /root/go/pkg/mod
+    create: ensure-exists
+
 network:
   dns:
     nameservers: ["1.1.1.1", "1.0.0.1"]
@@ -24,5 +34,6 @@ network:
       "dl.google.com",
       "registry.npmjs.org",
     ]
+
 memory: "2G"
 cpus: 2

@@ -1,7 +1,7 @@
 # Docker services for Barista
 #
-#   docker compose dev
-#   docker compose --rm dev pi
+#   docker compose run dev
+#   docker compose run --rm dev pi
 
 services:
   dev:
@@ -15,5 +15,11 @@ services:
       - ".:/workspace"
       - "${HOME}/.agents:/root/.agents"
       - "${HOME}/.pi:/root/.pi"
+      - go-build-cache:/root/.cache/go-build
+      - go-mod-cache:/root/go/pkg/mod
     mem_limit: "2G"
     cpus: 2
+
+volumes:
+  go-build-cache:
+  go-mod-cache:
