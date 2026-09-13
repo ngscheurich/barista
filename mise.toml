@@ -1,14 +1,34 @@
 [tools]
 go = "1.27"
 
-[tasks]
-clean = "rm -f ./bin/barista"
-build = "go build -o ./bin/barista ./cmd/barista"
-"docker:build" = "docker build -t barista ."
-"docker:dev" = "docker compose run --rm dev"
-"msb:bash" = "msb run --conf msb.yaml"
-"msb:pi" = "msb run --conf msb.yaml -- pi"
+[env]
+_.path = ["./bin"]
+
+[tasks.build]
+description = "Build for current platform"
+run = 'go build -o "bin/barista-$(go env GOOS)-$(go env GOARCH)" ./cmd/barista'
+
+[tasks.clean]
+description = "Remove all build artifacts"
+run = "rm -f bin/*"
+
+[tasks."docker:build"]
+description = "Build default Docker image"
+run = "docker build -t barista ."
+
+[tasks."docker:dev"]
+description = "Run dev service in an ephemeral container"
+run = "docker compose run --rm dev"
+
+[tasks."msb:run"]
+description = "Run microsandbox VM"
+run = "msb run --conf msb.yaml"
+
+[tasks."msb:pi"]
+description = "Run Pi in microsandbox VM"
+run = "msb run --conf msb.yaml -- pi"
 
 [tasks."msb:load"]
+description = "Build and save Docker image, then load it with microsandbox"
 depends = "docker:build"
 run = "docker save barista:latest | msb load"
