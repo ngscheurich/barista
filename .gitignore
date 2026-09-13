@@ -16,5 +16,5 @@ go.work.sum
 .DS_Store
 *.swp
 
-# Scratch review artifacts
+# Scratch artifacts
 /.scratch/
