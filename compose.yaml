@@ -1,0 +1,19 @@
+# Docker services for Barista
+#
+#   docker compose dev
+#   docker compose --rm dev pi
+
+services:
+  dev:
+    build: .
+    image: "barista"
+    working_dir: "/workspace"
+    command: "bash"
+    environment:
+      - OPENROUTER_API_KEY
+    volumes:
+      - ".:/workspace"
+      - "${HOME}/.agents:/root/.agents"
+      - "${HOME}/.pi:/root/.pi"
+    mem_limit: "2G"
+    cpus: 2
