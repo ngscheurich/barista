@@ -1,0 +1,28 @@
+image: "barista:latest"
+workdir: "/workspace"
+shell: "/bin/bash"
+secrets:
+  OPENROUTER_API_KEY:
+    allow: ["openrouter.ai"]
+mounts:
+  - ".:/workspace"
+  - "${HOME}/AGENTS.md:/root/AGENTS.md:ro"
+  - "${HOME}/.agents:/root/.agents:ro"
+  - "${HOME}/.pi:/root/.pi"
+network:
+  dns:
+    nameservers: ["1.1.1.1", "1.0.0.1"]
+  allow:
+    [
+      "openrouter.ai",
+      "proxy.golang.org",
+      "sum.golang.org",
+      "github.com",
+      "*.github.com",
+      "objects.githubusercontent.com",
+      "codeload.github.com",
+      "dl.google.com",
+      "registry.npmjs.org",
+    ]
+memory: "2G"
+cpus: 2

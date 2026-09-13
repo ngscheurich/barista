@@ -6,3 +6,9 @@ clean = "rm -f $HOME/.local/bin/barists"
 build = "go build -o $HOME/.local/bin/barista ./cmd/barista"
 "docker:build" = "docker build -t barista ."
 "docker:dev" = "docker compose run --rm dev"
+"msb:bash" = "msb run --conf msb.yaml"
+"msb:pi" = "msb run --conf msb.yaml -- pi"
+
+[tasks."msb:load"]
+depends = "docker:build"
+run = "docker save barista:latest | msb load"
