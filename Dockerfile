@@ -14,13 +14,14 @@ RUN apk add --no-cache \
     bash \
     curl \
     fd \
+    file \
     git \
     npm \
     ripgrep
 
 # Install Pi coding agent
 RUN set -eux; \
-    npm install -g --ignore-scripts @earendil-works/pi-coding-agent; \
+    npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.85.1; \
     pi --version; \
     npm cache clean --force
 
@@ -34,7 +35,8 @@ RUN set -eux; \
 COPY mise.toml ./mise.toml
 RUN set -eux; \
     mise install; \
-    go version
+    go version; \
+    rm mise.toml
 
 # Set up environment
 ENV LANG=C.UTF-8 \
