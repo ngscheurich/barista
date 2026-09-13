@@ -1,3 +1,5 @@
+# Based on Catppuccin Latte (https://github.com/catppuccin/palette)
+# Original palette released under the MIT License and Copyright (c) 2021 Catppuccin
 name = "Catppuccin Latte"
 
 [palette]
