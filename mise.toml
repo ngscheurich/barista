@@ -2,8 +2,8 @@
 go = "1.27"
 
 [tasks]
-clean = "rm -f $HOME/.local/bin/barists"
-build = "go build -o $HOME/.local/bin/barista ./cmd/barista"
+clean = "rm -f ./bin/barista"
+build = "go build -o ./bin/barista ./cmd/barista"
 "docker:build" = "docker build -t barista ."
 "docker:dev" = "docker compose run --rm dev"
 "msb:bash" = "msb run --conf msb.yaml"
