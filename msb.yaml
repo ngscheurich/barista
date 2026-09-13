@@ -1,3 +1,7 @@
+# microsandbox config for Barista
+#
+#   msb run --conf msb.yaml
+
 image: "barista:latest"
 
 workdir: "/workspace"
