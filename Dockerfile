@@ -31,7 +31,7 @@ RUN set -eux; \
     curl -fsSL https://mise.run | MISE_VERSION=2026.9.6 sh; \
     mise --version
 
-# Install mise tools
+# Install project tooling
 COPY mise.toml ./mise.toml
 RUN set -eux; \
     mise install; \
