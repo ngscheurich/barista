@@ -1,4 +1,4 @@
-# Docker services for Barista
+# Development setup for Barista
 #
 #   docker compose run dev
 #   docker compose run --rm dev pi
